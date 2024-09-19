@@ -1,4 +1,5 @@
 use crate::macros::expr_pat;
+use crate::parser;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
@@ -12,6 +13,11 @@ pub enum Expr {
 }
 
 impl Expr {
+    pub fn parse(input: &str) -> Expr {
+        let tokens = parser::tokenize(input);
+        parser::parse(tokens)
+    }
+
     pub fn num_unwrap(&self) -> i32 {
         match self {
             Expr::Num(n) => *n,
