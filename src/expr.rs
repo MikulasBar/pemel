@@ -38,7 +38,7 @@ impl Expr {
     pub fn eval_with_variable(&self, var: &str, value: i32) -> i32 {
         match self {
             Expr::Num(n) => *n,
-            Expr::Var(s) => if s == var { value } else { 0 },
+            Expr::Var(s) => if s == var { value } else { panic!("Variable {} is not defined", s) },
             expr_pat!(BINOP: lhs, rhs) => {
                 let lhs = lhs.eval_with_variable(var, value);
                 let rhs = rhs.eval_with_variable(var, value);
@@ -61,6 +61,28 @@ impl Expr {
         }
     }
 
+    pub fn get_closure_with_var(&self, var: &str) -> Box<dyn Fn(i32) -> i32 + '_> {
+        match self {
+            Expr::Num(n) => Box::new(|_| *n),
+            Expr::Var(s) => if s == var {
+                Box::new(|x| x)
+            } else {
+                panic!("Variable '{}' is not defined", s)
+            },
+            expr_pat!(BINOP: lhs, rhs) => {
+                let lhs = lhs.get_closure_with_var(var);
+                let rhs = rhs.get_closure_with_var(var);
+                match self {
+                    Expr::Add(_, _) => Box::new(move |x| lhs(x) + rhs(x)),
+                    Expr::Sub(_, _) => Box::new(move |x| lhs(x) - rhs(x)),
+                    Expr::Mul(_, _) => Box::new(move |x| lhs(x) * rhs(x)),
+                    Expr::Div(_, _) => Box::new(move |x| lhs(x) / rhs(x)),
+                    _ => unreachable!(),
+                }
+            },
+        }
+    }
+
     pub fn simplify(&mut self) {
         *self = match self {
             Expr::Num(_) => self.clone(),
@@ -70,5 +92,33 @@ impl Expr {
             // Expr::Sin(e) => Expr::Sin(Box::new(e.simplify())),
             _ => return,
         }
+    }
+}
+
+
+
+impl ToString for Expr {
+    fn to_string(&self) -> String {
+        match self {
+            Expr::Num(n) => n.to_string(),
+            Expr::Var(s) => s.clone(),
+            expr_pat!(BINOP: lhs, rhs) => format!("({} {} {})",
+                lhs.to_string(),
+                bin_op_to_char_unchecked(self),
+                rhs.to_string()
+            ),
+            // Expr::Sin(e) => format!("sin({})", e.to_string()),
+        }
+    }
+}
+
+
+fn bin_op_to_char_unchecked(expr: &Expr) -> char {
+    match expr {
+        Expr::Add(_, _) => '+',
+        Expr::Sub(_, _) => '-',
+        Expr::Mul(_, _) => '*',
+        Expr::Div(_, _) => '/',
+        _ => panic!("Not a binary operation"),
     }
 }
