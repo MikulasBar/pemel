@@ -9,7 +9,7 @@ pub enum Expr {
     Sub(Box<Expr>, Box<Expr>),
     Mul(Box<Expr>, Box<Expr>),
     Div(Box<Expr>, Box<Expr>),
-    // Sin(Box<Expr>),
+    Sin(Box<Expr>),
 }
 
 impl Expr {
@@ -44,7 +44,7 @@ impl Expr {
                 let rhs = rhs.eval_with_variable(var, value);
                 self.bin_op_unchecked(lhs, rhs)
             },
-            // Expr::Sin(e) => (e.eval_with_var(var, val) as f64).sin() as f32,
+            Expr::Sin(x) => x.eval_with_variable(var, value).sin(),
         }
     }
 
@@ -57,7 +57,7 @@ impl Expr {
                 let rhs = rhs.eval_const();
                 self.bin_op_unchecked(lhs, rhs)
             },
-            // Expr::Sin(e) => (e.eval_constant() as f64).sin() as f32,
+            Expr::Sin(x) => x.eval_const().sin(),
         }
     }
 
@@ -80,19 +80,23 @@ impl Expr {
                     _ => unreachable!(),
                 }
             },
+            Expr::Sin(x) => {
+                let x = x.get_closure_with_var(var);
+                Box::new(move |x| x.sin())
+            },
         }
     }
 
-    pub fn simplify(&mut self) {
-        *self = match self {
-            Expr::Num(_) => self.clone(),
-            Expr::Var(_) => self.clone(),
-            Expr::Sub(a, b) if a == b => Expr::Num(0.0),
-            Expr::Div(a, b) if a == b => Expr::Num(1.0),
-            // Expr::Sin(e) => Expr::Sin(Box::new(e.simplify())),
-            _ => return,
-        }
-    }
+    // pub fn simplify(&mut self) {
+    //     *self = match self {
+    //         Expr::Num(_) => self.clone(),
+    //         Expr::Var(_) => self.clone(),
+    //         Expr::Sub(a, b) if a == b => Expr::Num(0.0),
+    //         Expr::Div(a, b) if a == b => Expr::Num(1.0),
+    //         // Expr::Sin(e) => Expr::Sin(Box::new(e.simplify())),
+    //         _ => return,
+    //     }
+    // }
 
     pub fn new_mul(lhs: Self, rhs: Self) -> Self {
         Expr::Mul(Box::new(lhs), Box::new(rhs))
@@ -100,6 +104,10 @@ impl Expr {
 
     pub fn new_add(lhs: Self, rhs: Self) -> Self {
         Expr::Add(Box::new(lhs), Box::new(rhs))
+    }
+
+    pub fn new_sin(inner: Self) -> Self {
+        Expr::Sin(Box::new(inner))
     }
 }
 
@@ -115,7 +123,7 @@ impl ToString for Expr {
                 bin_op_to_char_unchecked(self),
                 rhs.to_string()
             ),
-            // Expr::Sin(e) => format!("sin({})", e.to_string()),
+            Expr::Sin(x) => format!("sin{}", x.to_string()),
         }
     }
 }

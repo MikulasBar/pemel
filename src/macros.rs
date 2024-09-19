@@ -9,6 +9,7 @@ macro_rules! expr_pat {
     };
 }
 
+#[allow(unused_braces)]
 pub(super) use {
-    expr_pat,
+    expr_pat
 };

@@ -63,8 +63,7 @@ pub fn tokenize(input: &str) -> Vec<Token> {
                 let mut ident_str = String::new();
 
                 parse_ident(&mut ident_str, &mut chars);
-
-                Token::Ident(ident_str)
+                match_keyword(ident_str)
             },
 
             _ => panic!(),
@@ -94,3 +93,10 @@ fn parse_sequence_while(string: &mut String, chars: &mut std::iter::Peekable<std
         }
     }
 } 
+
+fn match_keyword(string: String) -> Token {
+    match string.as_str() {
+        "sin" => Token::Sin,
+        _ => Token::Ident(string),
+    }
+}

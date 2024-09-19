@@ -30,6 +30,17 @@ fn implicit_multiplication() {
     assert_eq!(result, 3.5);
 }
 
+#[test]
+fn sin_expr() {
+    // TODO: WE NEED TO IMPLEMENT ROUNDING, SO WE CAN COMPARE FLOATS
+    // DUE TO THIS, THIS TEST WILL FAIL
+    let input = "sin(pi/2) + sin(pi)";
+    let expr = Expr::parse(input);
+    let result = expr.eval_with_variable("pi", std::f32::consts::PI);
+
+    assert_eq!(result, 1.0);
+}
+
 
 
 

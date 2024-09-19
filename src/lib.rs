@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 mod expr;
 mod parser;
 mod eval_error;
@@ -7,4 +9,5 @@ mod macros;
 mod expr_test;
 
 use expr::Expr;
+
 

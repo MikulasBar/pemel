@@ -17,6 +17,7 @@ fn parse_expr(tokens: &mut TokenIter) -> (Expr, IsConst) {
     parse_sum(tokens)
 }
 
+#[allow(irrefutable_let_patterns)]
 fn parse_sum(tokens: &mut TokenIter) -> (Expr, IsConst) {
     let (mut lhs, mut is_lhs_const) = parse_product(tokens);
 
@@ -32,6 +33,7 @@ fn parse_sum(tokens: &mut TokenIter) -> (Expr, IsConst) {
     (lhs, is_lhs_const)
 }
 
+#[allow(irrefutable_let_patterns)]
 fn parse_product(tokens: &mut TokenIter) -> (Expr, IsConst) {
     let (mut lhs, mut is_lhs_const) = parse_atom(tokens);
 
@@ -59,12 +61,18 @@ fn parse_atom(tokens: &mut TokenIter) -> (Expr, IsConst) {
             (Expr::Var(s), false)
         },
         
-        Token::LParen => {
-            expect_token!(Token::LParen in ITER tokens);
-            let inner = parse_expr(tokens);
-            expect_token!(Token::RParen in ITER tokens);
-            inner
-        },
+        Token::LParen => parse_parens(tokens),
+
+        Token::Sin => {
+            expect_token!(Token::Sin in ITER tokens);
+            let (inner, is_inner_const) = parse_parens(tokens);
+
+            if is_inner_const {
+                (Expr::Num(inner.eval_const().sin()), true)
+            } else {
+                (Expr::new_sin(inner), false)
+            }
+        }
 
         _ => panic!("Unexpected token"),
     };
@@ -119,10 +127,8 @@ fn parse_implicit_multiplication(mut lhs: Expr, mut is_lhs_const: IsConst, token
             },
     
             Token::LParen => {
-                expect_token!(Token::LParen in ITER tokens);
-                let (inner, is_inner_const) = parse_expr(tokens);
-                expect_token!(Token::RParen in ITER tokens);
-    
+                let (inner, is_inner_const) = parse_parens(tokens);
+
                 lhs = Expr::new_mul(lhs, inner);
                 is_lhs_const = is_lhs_const && is_inner_const;
             },
@@ -132,4 +138,11 @@ fn parse_implicit_multiplication(mut lhs: Expr, mut is_lhs_const: IsConst, token
     }
 
     (lhs, is_lhs_const)
+}
+
+fn parse_parens(tokens: &mut TokenIter) -> (Expr, IsConst) {
+    expect_token!(Token::LParen in ITER tokens);
+    let (inner, is_inner_const) = parse_expr(tokens);
+    expect_token!(Token::RParen in ITER tokens);
+    (inner, is_inner_const)
 }
