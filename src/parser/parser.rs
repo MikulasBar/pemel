@@ -48,7 +48,7 @@ fn parse_product(tokens: &mut TokenIter) -> (Expr, IsConst) {
 }
 
 fn parse_atom(tokens: &mut TokenIter) -> (Expr, IsConst) {
-    match tokens.peek().unwrap() {
+    let (lhs, is_lhs_const) = match tokens.peek().unwrap() {
         Token::Number(_) => {
             expect_token!(Token::Number(n) in ITER tokens);
             (Expr::Num(n), true)
@@ -67,7 +67,9 @@ fn parse_atom(tokens: &mut TokenIter) -> (Expr, IsConst) {
         },
 
         _ => panic!("Unexpected token"),
-    }
+    };
+
+    parse_implicit_multiplication(lhs, is_lhs_const, tokens)
 }
 
 fn merge_by_dependence(
@@ -104,4 +106,30 @@ fn op_token_to_expr_unchecked(token: &Token, lhs: Expr, rhs: Expr) -> Expr {
         Token::Slash => Expr::Div(Box::new(lhs), Box::new(rhs)),
         _ => panic!("Unexpected token"),
     }
+}
+
+fn parse_implicit_multiplication(mut lhs: Expr, mut is_lhs_const: IsConst, tokens: &mut TokenIter) -> (Expr, IsConst) {
+    while let Some(token) = tokens.peek() {
+        match token {
+            Token::Ident(_) => {
+                expect_token!(Token::Ident(s) in ITER tokens);
+    
+                lhs = Expr::new_mul(lhs, Expr::Var(s));
+                is_lhs_const = false;
+            },
+    
+            Token::LParen => {
+                expect_token!(Token::LParen in ITER tokens);
+                let (inner, is_inner_const) = parse_expr(tokens);
+                expect_token!(Token::RParen in ITER tokens);
+    
+                lhs = Expr::new_mul(lhs, inner);
+                is_lhs_const = is_lhs_const && is_inner_const;
+            },
+    
+            _ => break,
+        }
+    }
+
+    (lhs, is_lhs_const)
 }

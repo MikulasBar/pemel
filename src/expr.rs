@@ -93,6 +93,14 @@ impl Expr {
             _ => return,
         }
     }
+
+    pub fn new_mul(lhs: Self, rhs: Self) -> Self {
+        Expr::Mul(Box::new(lhs), Box::new(rhs))
+    }
+
+    pub fn new_add(lhs: Self, rhs: Self) -> Self {
+        Expr::Add(Box::new(lhs), Box::new(rhs))
+    }
 }
 
 

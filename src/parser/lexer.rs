@@ -62,15 +62,7 @@ pub fn tokenize(input: &str) -> Vec<Token> {
             char_pat!(IDENT) => {
                 let mut ident_str = String::new();
 
-                while let Some(&char) = chars.peek() {
-                    match char {
-                        char_pat!(IDENT) => {
-                            ident_str.push(char);
-                            chars.next();
-                        },
-                        _ => break,
-                    }
-                }
+                parse_ident(&mut ident_str, &mut chars);
 
                 Token::Ident(ident_str)
             },
@@ -84,15 +76,21 @@ pub fn tokenize(input: &str) -> Vec<Token> {
     tokens
 }
 
+fn parse_digits(string: &mut String, chars: &mut std::iter::Peekable<std::str::Chars>) {
+    parse_sequence_while(string, chars, |c| c.is_digit(10));
+}
 
-fn parse_digits(num_str: &mut String, chars: &mut std::iter::Peekable<std::str::Chars>) {
+fn parse_ident(string: &mut String, chars: &mut std::iter::Peekable<std::str::Chars>) {
+    parse_sequence_while(string, chars, |c| matches!(c, char_pat!(IDENT)));
+}
+
+fn parse_sequence_while(string: &mut String, chars: &mut std::iter::Peekable<std::str::Chars>, f: fn(char) -> bool) {
     while let Some(&char) = chars.peek() {
-        match char {
-            '0'..='9' => {
-                num_str.push(char);
-                chars.next();
-            },
-            _ => break,
+        if f(char) {
+            string.push(char);
+            chars.next();
+        } else {
+            break;
         }
     }
-}
+} 

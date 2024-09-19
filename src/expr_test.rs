@@ -22,6 +22,25 @@ fn get_closure_with_var() {
 }
 
 #[test]
+fn implicit_multiplication() {
+    let input = "2x(2 - x)(1 + 1) - 2x + 1.5x";
+    let expr = Expr::parse(input);
+    let result = expr.eval_with_variable("x", 1.0);
+    
+    assert_eq!(result, 3.5);
+}
+
+
+
+
+
+
+
+//////////////////////////////////////////////////////////////////////////////
+//  These test can't fail because they are just for trying functionality.   //
+//////////////////////////////////////////////////////////////////////////////
+
+#[test]
 fn to_string() {
     let input = "7 - x + 8 * (x - 1) - 2";
     let expr = Expr::parse(input);
