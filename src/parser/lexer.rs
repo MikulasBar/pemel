@@ -44,14 +44,15 @@ pub fn tokenize(input: &str) -> Vec<Token> {
 
             '0'..='9' => {
                 let mut num_str = String::new();
+                parse_digits(&mut num_str, &mut chars);
+                
+                if chars.peek() == Some(&'.') {
+                    chars.next();
+                    num_str.push('.');
+                    parse_digits(&mut num_str, &mut chars);
 
-                while let Some(&char) = chars.peek() {
-                    match char {
-                        '0'..='9' => {
-                            num_str.push(char);
-                            chars.next();
-                        },
-                        _ => break,
+                    if num_str.chars().last() == Some('.') {
+                        panic!("Number literal must have digits after the decimal point");
                     }
                 }
 
@@ -81,4 +82,17 @@ pub fn tokenize(input: &str) -> Vec<Token> {
     }
 
     tokens
+}
+
+
+fn parse_digits(num_str: &mut String, chars: &mut std::iter::Peekable<std::str::Chars>) {
+    while let Some(&char) = chars.peek() {
+        match char {
+            '0'..='9' => {
+                num_str.push(char);
+                chars.next();
+            },
+            _ => break,
+        }
+    }
 }

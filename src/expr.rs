@@ -3,7 +3,7 @@ use crate::parser;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
-    Num(i32),
+    Num(f32),
     Var(String),
     Add(Box<Expr>, Box<Expr>),
     Sub(Box<Expr>, Box<Expr>),
@@ -18,14 +18,14 @@ impl Expr {
         parser::parse(tokens)
     }
 
-    pub fn num_unwrap(&self) -> i32 {
+    pub fn num_unwrap(&self) -> f32 {
         match self {
             Expr::Num(n) => *n,
             _ => panic!("Not a number"),
         }
     }
 
-    fn bin_op_unchecked(&self, lhs: i32, rhs: i32) -> i32 {
+    fn bin_op_unchecked(&self, lhs: f32, rhs: f32) -> f32 {
         match self {
             Expr::Add(_, _) => lhs + rhs,
             Expr::Sub(_, _) => lhs - rhs,
@@ -35,7 +35,7 @@ impl Expr {
         }
     }
 
-    pub fn eval_with_variable(&self, var: &str, value: i32) -> i32 {
+    pub fn eval_with_variable(&self, var: &str, value: f32) -> f32 {
         match self {
             Expr::Num(n) => *n,
             Expr::Var(s) => if s == var { value } else { panic!("Variable {} is not defined", s) },
@@ -44,11 +44,11 @@ impl Expr {
                 let rhs = rhs.eval_with_variable(var, value);
                 self.bin_op_unchecked(lhs, rhs)
             },
-            // Expr::Sin(e) => (e.eval_with_var(var, val) as f64).sin() as i32,
+            // Expr::Sin(e) => (e.eval_with_var(var, val) as f64).sin() as f32,
         }
     }
 
-    pub fn eval_const(&self) -> i32 {
+    pub fn eval_const(&self) -> f32 {
         match self {
             Expr::Num(n) => *n,
             Expr::Var(_) => panic!("Variable found in constant expression"),
@@ -57,11 +57,11 @@ impl Expr {
                 let rhs = rhs.eval_const();
                 self.bin_op_unchecked(lhs, rhs)
             },
-            // Expr::Sin(e) => (e.eval_constant() as f64).sin() as i32,
+            // Expr::Sin(e) => (e.eval_constant() as f64).sin() as f32,
         }
     }
 
-    pub fn get_closure_with_var(&self, var: &str) -> Box<dyn Fn(i32) -> i32 + '_> {
+    pub fn get_closure_with_var(&self, var: &str) -> Box<dyn Fn(f32) -> f32 + '_> {
         match self {
             Expr::Num(n) => Box::new(|_| *n),
             Expr::Var(s) => if s == var {
@@ -87,8 +87,8 @@ impl Expr {
         *self = match self {
             Expr::Num(_) => self.clone(),
             Expr::Var(_) => self.clone(),
-            Expr::Sub(a, b) if a == b => Expr::Num(0),
-            Expr::Div(a, b) if a == b => Expr::Num(1),
+            Expr::Sub(a, b) if a == b => Expr::Num(0.0),
+            Expr::Div(a, b) if a == b => Expr::Num(1.0),
             // Expr::Sin(e) => Expr::Sin(Box::new(e.simplify())),
             _ => return,
         }

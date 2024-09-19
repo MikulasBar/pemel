@@ -84,7 +84,7 @@ fn merge_by_dependence(
     }
 }
 
-fn op_token_apply_unchecked(token: &Token, lhs: Expr, rhs: Expr) -> i32 {
+fn op_token_apply_unchecked(token: &Token, lhs: Expr, rhs: Expr) -> f32 {
     let lhs = lhs.eval_const();
     let rhs = rhs.eval_const();
     match token {

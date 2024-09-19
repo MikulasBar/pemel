@@ -9,7 +9,7 @@ pub enum Token {
     Slash,
     LParen,
     RParen,
-    Number(i32),
+    Number(f32),
     Ident(String),
     EOF,
 }
