@@ -7,7 +7,10 @@ macro_rules! char_pat {
 
 macro_rules! expect_token {
     ($pat:pat in ITER $iter:expr) => {
-        let $pat =  $iter.next().unwrap() else {panic!()};
+        #[allow(irrefutable_let_patterns)]
+        let $pat =  $iter.next().unwrap() else {
+            panic!("Unexpected token {:?}", $iter.next().unwrap())
+        };
     };
 }
 

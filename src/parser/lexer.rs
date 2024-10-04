@@ -51,7 +51,7 @@ pub fn tokenize(input: &str) -> Vec<Token> {
                     num_str.push('.');
                     parse_digits(&mut num_str, &mut chars);
 
-                    if num_str.chars().last() == Some('.') {
+                    if num_str.ends_with('.') {
                         panic!("Number literal must have digits after the decimal point");
                     }
                 }
@@ -66,7 +66,7 @@ pub fn tokenize(input: &str) -> Vec<Token> {
                 match_keyword(ident_str)
             },
 
-            _ => panic!(),
+            _ => panic!("Unexpected character: {}", char),
         };
 
         tokens.push(token);

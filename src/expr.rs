@@ -98,16 +98,69 @@ impl Expr {
     //     }
     // }
 
-    pub fn new_mul(lhs: Self, rhs: Self) -> Self {
-        Expr::Mul(Box::new(lhs), Box::new(rhs))
+    pub fn new_mul(lhs: impl Into<Self>, rhs: impl Into<Self>) -> Self {
+        Expr::Mul(
+            Box::new(lhs.into()),
+            Box::new(rhs.into())
+        )
     }
 
-    pub fn new_add(lhs: Self, rhs: Self) -> Self {
-        Expr::Add(Box::new(lhs), Box::new(rhs))
+    pub fn new_add(lhs: impl Into<Self>, rhs: impl Into<Self>) -> Self {
+        Expr::Add(
+            Box::new(lhs.into()), 
+            Box::new(rhs.into())
+        )
     }
 
-    pub fn new_sin(inner: Self) -> Self {
-        Expr::Sin(Box::new(inner))
+    pub fn new_sub(lhs: impl Into<Self>, rhs: impl Into<Self>) -> Self {
+        Expr::Sub(
+            Box::new(lhs.into()), 
+            Box::new(rhs.into())
+        )
+    }
+
+    pub fn new_div(lhs: impl Into<Self>, rhs: impl Into<Self>) -> Self {
+        Expr::Div(
+            Box::new(lhs.into()), 
+            Box::new(rhs.into())
+        )
+    }
+
+    pub fn new_sin(inner: impl Into<Self>) -> Self {
+        Expr::Sin(
+            Box::new(inner.into())
+        )
+    }
+
+    pub fn substitute(&mut self, var: &str, value: impl Into<Expr>) {
+        match self {
+            Expr::Num(_) => (),
+            Expr::Var(s) if s == var => {
+                *self = value.into();
+            },
+            
+            expr_pat!(BINOP: lhs, rhs) => {
+                let value = value.into();
+                lhs.substitute(var, value.clone());
+                rhs.substitute(var, value);
+            },
+            
+            Expr::Sin(x) => x.substitute(var, value),
+
+            _ => (),
+        }
+    }
+
+    // This returns a closure that takes a value and a step size h like in definition of derivative
+    // You need to specify the variable for which you want to take the derivative
+    // Before you do that, you need to substitute all other variables with their values
+    pub fn aprox_derivative(&self, var: &str) -> Box<dyn Fn(f32, f32) -> f32 + '_> {
+        let f = self.get_closure_with_var(var);
+        let df = move |x, h: f32| {
+            (f(x + h) - f(x)) / h
+        };
+
+        Box::new(df)
     }
 }
 
@@ -137,4 +190,30 @@ fn bin_op_to_char_unchecked(expr: &Expr) -> char {
         Expr::Div(_, _) => '/',
         _ => panic!("Not a binary operation"),
     }
+}
+
+
+
+mod froms {
+    use super::*;
+
+    impl From<f32> for Expr {
+        fn from(n: f32) -> Self {
+            Expr::Num(n)
+        }
+    }
+
+    impl From<&str> for Expr {
+        fn from(s: &str) -> Self {
+            Expr::Var(s.to_string())
+        }
+    }
+
+    impl From<String> for Expr {
+        fn from(s: String) -> Self {
+            Expr::Var(s)
+        }
+    }
+
+
 }

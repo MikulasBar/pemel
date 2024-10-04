@@ -1,10 +1,7 @@
-use core::panic;
-use std::any;
-
 use super::token::{self, Token, TokenIter};
 use super::parse_error::ParseError;
-use crate::expr::Expr;
 use super::macros::expect_token;
+use crate::expr::Expr;
 
 type IsConst = bool;
 
@@ -17,7 +14,6 @@ fn parse_expr(tokens: &mut TokenIter) -> (Expr, IsConst) {
     parse_sum(tokens)
 }
 
-#[allow(irrefutable_let_patterns)]
 fn parse_sum(tokens: &mut TokenIter) -> (Expr, IsConst) {
     let (mut lhs, mut is_lhs_const) = parse_product(tokens);
 
@@ -26,14 +22,13 @@ fn parse_sum(tokens: &mut TokenIter) -> (Expr, IsConst) {
         
         let (rhs, is_rhs_const) = parse_product(tokens);
         let is_both_const = is_lhs_const && is_rhs_const;
-        lhs = merge_by_dependence(&token, lhs, rhs, is_both_const);
+        lhs = merge_to_bin_op(&token, lhs, rhs, is_both_const);
         is_lhs_const = is_both_const;
     }
 
     (lhs, is_lhs_const)
 }
 
-#[allow(irrefutable_let_patterns)]
 fn parse_product(tokens: &mut TokenIter) -> (Expr, IsConst) {
     let (mut lhs, mut is_lhs_const) = parse_atom(tokens);
 
@@ -42,7 +37,7 @@ fn parse_product(tokens: &mut TokenIter) -> (Expr, IsConst) {
         
         let (rhs, is_rhs_const) = parse_atom(tokens);
         let is_both_const = is_lhs_const && is_rhs_const;
-        lhs = merge_by_dependence(&token, lhs, rhs, is_both_const);
+        lhs = merge_to_bin_op(&token, lhs, rhs, is_both_const);
         is_lhs_const = is_both_const;
     }
 
@@ -51,6 +46,8 @@ fn parse_product(tokens: &mut TokenIter) -> (Expr, IsConst) {
 
 fn parse_atom(tokens: &mut TokenIter) -> (Expr, IsConst) {
     let (lhs, is_lhs_const) = match tokens.peek().unwrap() {
+        Token::LParen => parse_parens(tokens),
+
         Token::Number(_) => {
             expect_token!(Token::Number(n) in ITER tokens);
             (Expr::Num(n), true)
@@ -60,35 +57,38 @@ fn parse_atom(tokens: &mut TokenIter) -> (Expr, IsConst) {
             expect_token!(Token::Ident(s) in ITER tokens);
             (Expr::Var(s), false)
         },
-        
-        Token::LParen => parse_parens(tokens),
 
         Token::Sin => {
             expect_token!(Token::Sin in ITER tokens);
             let (inner, is_inner_const) = parse_parens(tokens);
+            let sin = Expr::new_sin(inner);
 
             if is_inner_const {
-                (Expr::Num(inner.eval_const().sin()), true)
+                (Expr::Num(sin.eval_const()), true)
             } else {
-                (Expr::new_sin(inner), false)
+                (sin, false)
             }
         }
 
-        _ => panic!("Unexpected token"),
+        _ => panic!("Unexpected token {:?}", tokens.peek().unwrap()),
     };
 
     parse_implicit_multiplication(lhs, is_lhs_const, tokens)
 }
 
-fn merge_by_dependence(
+
+// This merges two expressions into a binary operation expression.
+// If both expressions are constant, the operation is evaluated and the result is returned as a constant expression.
+// Otherwise, the operation is returned as an expression.
+// if the token is not a binary operator, this function panics.
+fn merge_to_bin_op(
     token: &Token,
     lhs: Expr,
     rhs: Expr,
     is_const: bool,
 ) -> Expr {
     if is_const {
-        let result = op_token_apply_unchecked(token, lhs, rhs);
-        Expr::Num(result)
+        op_token_apply_unchecked(token, lhs, rhs).into()
     } else {
         op_token_to_expr_unchecked(token, lhs, rhs)
     }
@@ -108,14 +108,17 @@ fn op_token_apply_unchecked(token: &Token, lhs: Expr, rhs: Expr) -> f32 {
 
 fn op_token_to_expr_unchecked(token: &Token, lhs: Expr, rhs: Expr) -> Expr {
     match token {
-        Token::Plus => Expr::Add(Box::new(lhs), Box::new(rhs)),
-        Token::Minus => Expr::Sub(Box::new(lhs), Box::new(rhs)),
-        Token::Star => Expr::Mul(Box::new(lhs), Box::new(rhs)),
-        Token::Slash => Expr::Div(Box::new(lhs), Box::new(rhs)),
-        _ => panic!("Unexpected token"),
+        Token::Plus     => Expr::new_add(lhs, rhs),
+        Token::Minus    => Expr::new_sub(lhs, rhs),
+        Token::Star     => Expr::new_mul(lhs, rhs),
+        Token::Slash    => Expr::new_div(lhs, rhs),
+        _ => panic!("Unexpected token {:?}", token),
     }
 }
 
+// Parses expressions without operator between them.
+// All expressions are taken as they are multiplied.
+// TODO: doesn't handle sinus
 fn parse_implicit_multiplication(mut lhs: Expr, mut is_lhs_const: IsConst, tokens: &mut TokenIter) -> (Expr, IsConst) {
     while let Some(token) = tokens.peek() {
         match token {

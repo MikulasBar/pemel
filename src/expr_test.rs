@@ -31,6 +31,16 @@ fn implicit_multiplication() {
 }
 
 #[test]
+fn aprox_derivative() {
+    let input = "x*x + 2x + 1";
+    let expr = Expr::parse(input);
+    let derivative = expr.aprox_derivative("x");
+    let result = derivative(2.0, 0.00001);
+    
+    assert_eq!(result.round(), 6.0);
+}
+
+#[test]
 fn sin_expr() {
     // TODO: WE NEED TO IMPLEMENT ROUNDING, SO WE CAN COMPARE FLOATS
     // DUE TO THIS, THIS TEST WILL FAIL
@@ -48,7 +58,7 @@ fn sin_expr() {
 
 
 //////////////////////////////////////////////////////////////////////////////
-//  These test can't fail because they are just for trying functionality.   //
+//  These test can't fail because they are just for testing functionality.   //
 //////////////////////////////////////////////////////////////////////////////
 
 #[test]

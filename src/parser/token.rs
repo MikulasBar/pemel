@@ -1,7 +1,7 @@
 use std::iter::Peekable;
 use std::vec::IntoIter;
 
-
+#[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Plus,
     Minus,
