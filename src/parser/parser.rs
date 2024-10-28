@@ -52,7 +52,7 @@ fn parse_atom(tokens: &mut TokenIter) -> (Expr, IsConst) {
             expect_token!(Token::Number(n) in ITER tokens);
             (Expr::Num(n), true)
         },
-
+        
         Token::Ident(_) => {
             expect_token!(Token::Ident(s) in ITER tokens);
             (Expr::Var(s), false)
@@ -73,7 +73,7 @@ fn parse_atom(tokens: &mut TokenIter) -> (Expr, IsConst) {
         _ => panic!("Unexpected token {:?}", tokens.peek().unwrap()),
     };
 
-    parse_implicit_multiplication(lhs, is_lhs_const, tokens)
+    (lhs, is_lhs_const)
 }
 
 
@@ -117,8 +117,9 @@ fn op_token_to_expr_unchecked(token: &Token, lhs: Expr, rhs: Expr) -> Expr {
 }
 
 // Parses expressions without operator between them.
-// All expressions are taken as they are multiplied.
-// TODO: doesn't handle sinus
+// Only first number as coefficient is parsed.
+// It's because there can be umbiguos cases and the parsing of them would be hell more complex.
+// So no, I will not implement it.
 fn parse_implicit_multiplication(mut lhs: Expr, mut is_lhs_const: IsConst, tokens: &mut TokenIter) -> (Expr, IsConst) {
     while let Some(token) = tokens.peek() {
         match token {
