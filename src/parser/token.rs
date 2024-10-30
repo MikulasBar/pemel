@@ -9,6 +9,7 @@ pub enum Token {
     Minus,
     Star,
     Slash,
+    Caret,
     LParen,
     RParen,
     Number(f32),

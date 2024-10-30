@@ -9,6 +9,7 @@ pub enum Expr {
     Sub(Box<Expr>, Box<Expr>),
     Mul(Box<Expr>, Box<Expr>),
     Div(Box<Expr>, Box<Expr>),
+    Pow(Box<Expr>, Box<Expr>),
     Sin(Box<Expr>),
 }
 
@@ -31,6 +32,7 @@ impl Expr {
             Expr::Sub(_, _) => lhs - rhs,
             Expr::Mul(_, _) => lhs * rhs,
             Expr::Div(_, _) => lhs / rhs,
+            Expr::Pow(_, _) => lhs.powf(rhs),
             _ => panic!("Not a binary operation"),
         }
     }
@@ -38,12 +40,18 @@ impl Expr {
     pub fn eval_with_variable(&self, var: &str, value: f32) -> f32 {
         match self {
             Expr::Num(n) => *n,
-            Expr::Var(s) => if s == var { value } else { panic!("Variable {} is not defined", s) },
+            Expr::Var(s) => if s == var {
+                value
+            } else {
+                panic!("Variable {} is not defined", s)
+            },
+            
             expr_pat!(BINOP: lhs, rhs) => {
                 let lhs = lhs.eval_with_variable(var, value);
                 let rhs = rhs.eval_with_variable(var, value);
                 self.bin_op_unchecked(lhs, rhs)
             },
+
             Expr::Sin(x) => x.eval_with_variable(var, value).sin(),
         }
     }
@@ -77,6 +85,7 @@ impl Expr {
                     Expr::Sub(_, _) => Box::new(move |x| lhs(x) - rhs(x)),
                     Expr::Mul(_, _) => Box::new(move |x| lhs(x) * rhs(x)),
                     Expr::Div(_, _) => Box::new(move |x| lhs(x) / rhs(x)),
+                    Expr::Pow(_, _) => Box::new(move |x| lhs(x).powf(rhs(x))),
                     _ => unreachable!(),
                 }
             },
@@ -123,6 +132,13 @@ impl Expr {
         Expr::Div(
             Box::new(lhs.into()), 
             Box::new(rhs.into())
+        )
+    }
+
+    pub fn new_pow(lhs: impl Into<Self>, rhs: impl Into<Self>) -> Self {
+        Expr::Pow(
+            Box::new(lhs.into()),
+            Box::new(rhs.into()),
         )
     }
 
@@ -188,6 +204,7 @@ fn bin_op_to_char_unchecked(expr: &Expr) -> char {
         Expr::Sub(_, _) => '-',
         Expr::Mul(_, _) => '*',
         Expr::Div(_, _) => '/',
+        Expr::Pow(_, _) => '^',
         _ => panic!("Not a binary operation"),
     }
 }

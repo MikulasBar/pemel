@@ -6,6 +6,7 @@ macro_rules! expr_pat {
         | Expr::Sub($lhs, $rhs) 
         | Expr::Mul($lhs, $rhs) 
         | Expr::Div($lhs, $rhs)
+        | Expr::Pow($lhs, $rhs)
     };
 }
 

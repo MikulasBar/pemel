@@ -40,9 +40,27 @@ fn aprox_derivative() {
     assert_eq!(result.round(), 6.0);
 }
 
+
+#[test]
+fn power() {
+    let input = "2*x^3 - 3*x^2/2 + 1*x^(2/1) - 5";
+    let expr = Expr::parse(input);
+
+    println!("{}", expr.to_string());
+
+    let zero = expr.eval_with_variable("x", 0.0);
+    let two = expr.eval_with_variable("x", 2.0);
+    let minus_two = expr.eval_with_variable("x", -2.0);
+
+    assert_eq!(zero, -5.0);
+    assert_eq!(two, 9.0);
+    assert_eq!(minus_two, -23.0);
+}
+
 #[test]
 fn sin_expr() {
-    // TODO: Consider implementing rounding function error offset.
+    // TODO: Consider implementing rounding function for trigs.
+    // But maybe it's not neccessary.
     let input = "sin(pi/2) + sin(pi)";
     let expr = Expr::parse(input);
     let result = expr.eval_with_variable("pi", std::f32::consts::PI);

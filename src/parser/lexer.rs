@@ -32,6 +32,11 @@ pub fn tokenize(input: &str) -> Vec<Token> {
                 Token::Slash
             },
 
+            '^' => {
+                chars.next();
+                Token::Caret
+            },
+
             '(' => {
                 chars.next();
                 Token::LParen
@@ -93,6 +98,8 @@ fn parse_sequence_while(string: &mut String, chars: &mut std::iter::Peekable<std
         }
     }
 } 
+
+
 
 fn match_keyword(string: String) -> Token {
     match string.as_str() {

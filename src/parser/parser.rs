@@ -1,5 +1,3 @@
-use core::panic;
-
 use super::token::{self, Token, TokenIter};
 use super::parse_error::ParseError;
 use super::macros::expect_token;
@@ -16,34 +14,53 @@ fn parse_expr(tokens: &mut TokenIter) -> (Expr, IsConst) {
     parse_sum(tokens)
 }
 
+
+// BUG: If i accidentally use the implicit multiplication like so:
+// a + bx
+// Then the parser will just stop at the 'b' and will not panic neither.
+// I have to fix it eventually.
+// Or implement implicit multiplication for numbers at beginning. (This may not solve the issue)
 fn parse_sum(tokens: &mut TokenIter) -> (Expr, IsConst) {
-    let (mut lhs, mut is_lhs_const) = parse_product(tokens);
-
-    while let Some(Token::Plus | Token::Minus) = tokens.peek() {
-        expect_token!(token in ITER tokens);
-        
-        let (rhs, is_rhs_const) = parse_product(tokens);
-        let is_both_const = is_lhs_const && is_rhs_const;
-        lhs = convert_to_bin_op(&token, lhs, rhs, is_both_const);
-        is_lhs_const = is_both_const;
-    }
-
-    (lhs, is_lhs_const)
+    parse_bin_op(
+        |t| matches!(t, Some(Token::Plus | Token::Minus)),
+        |iter| parse_product(iter),
+        tokens
+    )
 }
 
 fn parse_product(tokens: &mut TokenIter) -> (Expr, IsConst) {
-    let (mut lhs, mut is_lhs_const) = parse_atom(tokens);
+    parse_bin_op(
+        |t| matches!(t, Some(Token::Star | Token::Slash)),
+        |iter| parse_power(iter),
+        tokens
+    )
+}
 
-    while let Some(Token::Star | Token::Slash) = tokens.peek() {
+fn parse_power(tokens: &mut TokenIter) -> (Expr, IsConst) {
+    parse_bin_op(
+        |t| matches!(t, Some(Token::Caret)),
+        |iter| parse_atom(iter),
+        tokens
+    )
+}
+
+fn parse_bin_op(
+    match_op: fn(Option<&Token>) -> bool,
+    parse_prev: fn(&mut TokenIter) -> (Expr, IsConst),
+    tokens: &mut TokenIter
+) -> (Expr, IsConst) {
+    let (mut lhs, mut is_lhs_const) = parse_prev(tokens);
+
+    while match_op(tokens.peek()) {
         expect_token!(token in ITER tokens);
-        
-        let (rhs, is_rhs_const) = parse_atom(tokens);
+
+        let (rhs, is_rhs_const) = parse_prev(tokens);
         let is_both_const = is_lhs_const && is_rhs_const;
         lhs = convert_to_bin_op(&token, lhs, rhs, is_both_const);
         is_lhs_const = is_both_const;
     }
 
-    (lhs, is_lhs_const)
+    (lhs, is_lhs_const)   
 }
 
 fn parse_atom(tokens: &mut TokenIter) -> (Expr, IsConst) {
@@ -127,6 +144,7 @@ fn op_token_apply_unchecked(token: &Token, lhs: Expr, rhs: Expr) -> f32 {
         Token::Minus => lhs - rhs,
         Token::Star  => lhs * rhs,
         Token::Slash => lhs / rhs,
+        Token::Caret => lhs.powf(rhs),
         _ => panic!("Unexpected token"),
     }
 }
@@ -137,6 +155,7 @@ fn op_token_wrap(token: &Token, lhs: Expr, rhs: Expr) -> Expr {
         Token::Minus    => Expr::new_sub(lhs, rhs),
         Token::Star     => Expr::new_mul(lhs, rhs),
         Token::Slash    => Expr::new_div(lhs, rhs),
+        Token::Caret    => Expr::new_pow(lhs, rhs),
         _ => panic!("Unexpected token {:?}", token),
     }
 }
