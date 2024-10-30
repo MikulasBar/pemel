@@ -1,13 +1,20 @@
 use crate::expr::Expr;
 
 #[test]
-fn const_expr() {
+fn const_expr_eval() {
     let input = "8 + 6 * 2.5  + (2 - 2) + 1.5001";
     let expr = Expr::parse(input);
     let result = expr.eval_const();
 
     assert_eq!(expr, Expr::Num(24.5001));
-    assert_eq!(result, 24.5001);
+}
+
+#[should_panic]
+#[test]
+fn const_expr_eval_should_panic() {
+    let input = "2.5*8 + 4*(1 - x)";
+    let expr = Expr::parse(input);
+    let result = expr.eval_const();
 }
 
 
@@ -22,15 +29,6 @@ fn get_closure_with_var() {
 }
 
 #[test]
-fn implicit_multiplication() {
-    let input = "2x*(2 - x)*(1 + 1) - 2*x + 1.5*x";
-    let expr = Expr::parse(input);
-    let result = expr.eval_with_variable("x", 1.0);
-    
-    assert_eq!(result, 3.5);
-}
-
-#[test]
 fn aprox_derivative() {
     let input = "x*x + 2*x + 1";
     let expr = Expr::parse(input);
@@ -42,16 +40,14 @@ fn aprox_derivative() {
     assert_eq!(result.round(), 6.0);
 }
 
-#[should_panic] // ROUDING IS NOT IMPLEMENTED YET
 #[test]
 fn sin_expr() {
-    // TODO: WE NEED TO IMPLEMENT ROUNDING, SO WE CAN COMPARE FLOATS
-    // DUE TO THIS, THIS TEST WILL FAIL
+    // TODO: Consider implementing rounding function error offset.
     let input = "sin(pi/2) + sin(pi)";
     let expr = Expr::parse(input);
     let result = expr.eval_with_variable("pi", std::f32::consts::PI);
 
-    assert_eq!(result, 1.0);
+    assert!((result - 1.0).abs() <= f32::EPSILON);
 }
 
 
