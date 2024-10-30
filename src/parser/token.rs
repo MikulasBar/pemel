@@ -1,6 +1,8 @@
 use std::iter::Peekable;
 use std::vec::IntoIter;
 
+pub type TokenIter = Peekable<IntoIter<Token>>;
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Plus,
@@ -9,11 +11,14 @@ pub enum Token {
     Slash,
     LParen,
     RParen,
-    Sin,
     Number(f32),
+    // sin, and other special names are also Ident
     Ident(String),
+    //Punctuated(Punctation, Vec<Box<Token>>),
     EOF,
 }
-
-
-pub type TokenIter = Peekable<IntoIter<Token>>;
+//
+//#[derive(Debug, PartialEq, Clone)]
+//pub enum Punctation {
+//    Comma,
+//}

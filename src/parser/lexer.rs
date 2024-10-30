@@ -96,7 +96,6 @@ fn parse_sequence_while(string: &mut String, chars: &mut std::iter::Peekable<std
 
 fn match_keyword(string: String) -> Token {
     match string.as_str() {
-        "sin" => Token::Sin,
         _ => Token::Ident(string),
     }
 }

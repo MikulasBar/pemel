@@ -1,3 +1,5 @@
+use core::panic;
+
 use super::token::{self, Token, TokenIter};
 use super::parse_error::ParseError;
 use super::macros::expect_token;
@@ -22,7 +24,7 @@ fn parse_sum(tokens: &mut TokenIter) -> (Expr, IsConst) {
         
         let (rhs, is_rhs_const) = parse_product(tokens);
         let is_both_const = is_lhs_const && is_rhs_const;
-        lhs = merge_to_bin_op(&token, lhs, rhs, is_both_const);
+        lhs = convert_to_bin_op(&token, lhs, rhs, is_both_const);
         is_lhs_const = is_both_const;
     }
 
@@ -37,7 +39,7 @@ fn parse_product(tokens: &mut TokenIter) -> (Expr, IsConst) {
         
         let (rhs, is_rhs_const) = parse_atom(tokens);
         let is_both_const = is_lhs_const && is_rhs_const;
-        lhs = merge_to_bin_op(&token, lhs, rhs, is_both_const);
+        lhs = convert_to_bin_op(&token, lhs, rhs, is_both_const);
         is_lhs_const = is_both_const;
     }
 
@@ -54,21 +56,8 @@ fn parse_atom(tokens: &mut TokenIter) -> (Expr, IsConst) {
         },
         
         Token::Ident(_) => {
-            expect_token!(Token::Ident(s) in ITER tokens);
-            (Expr::Var(s), false)
+            parse_ident(tokens)
         },
-
-        Token::Sin => {
-            expect_token!(Token::Sin in ITER tokens);
-            let (inner, is_inner_const) = parse_parens(tokens);
-            let sin = Expr::new_sin(inner);
-
-            if is_inner_const {
-                (Expr::Num(sin.eval_const()), true)
-            } else {
-                (sin, false)
-            }
-        }
 
         _ => panic!("Unexpected token {:?}", tokens.peek().unwrap()),
     };
@@ -76,12 +65,48 @@ fn parse_atom(tokens: &mut TokenIter) -> (Expr, IsConst) {
     (lhs, is_lhs_const)
 }
 
+fn parse_ident(tokens: &mut TokenIter) -> (Expr, IsConst) {
+    expect_token!(Token::Ident(ident) in ITER tokens);
+
+    if let Some(Token::LParen) = tokens.peek() {
+        let (inner, is_const) = parse_parens(tokens);
+        let func = convert_to_func(ident, inner, is_const);
+        return (func, is_const);
+    }
+
+    (ident.into(), false)
+}
+ 
+fn parse_parens(tokens: &mut TokenIter) -> (Expr, IsConst) {
+    expect_token!(Token::LParen in ITER tokens);
+    let (inner, is_inner_const) = parse_expr(tokens);
+    expect_token!(Token::RParen in ITER tokens);
+    (inner, is_inner_const)
+}
+
+fn convert_to_func(ident: String, inner: Expr, is_const: IsConst) -> Expr {
+    let func = wrap_with_func(ident, inner);
+
+    if is_const {
+        func.eval_const().into()
+    } else {
+        func
+    }   
+}
+
+fn wrap_with_func(ident: String, inner: Expr) -> Expr {
+    match ident.as_str() {
+        "sin" => Expr::new_sin(inner),
+        _ => panic!("Function name not recognized: {}", ident),
+    }
+}
+
 
 // This merges two expressions into a binary operation expression.
 // If both expressions are constant, the operation is evaluated and the result is returned as a constant expression.
 // Otherwise, the operation is returned as an expression.
 // if the token is not a binary operator, this function panics.
-fn merge_to_bin_op(
+fn convert_to_bin_op(
     token: &Token,
     lhs: Expr,
     rhs: Expr,
@@ -90,7 +115,7 @@ fn merge_to_bin_op(
     if is_const {
         op_token_apply_unchecked(token, lhs, rhs).into()
     } else {
-        op_token_to_expr_unchecked(token, lhs, rhs)
+        op_token_wrap(token, lhs, rhs)
     }
 }
 
@@ -106,7 +131,7 @@ fn op_token_apply_unchecked(token: &Token, lhs: Expr, rhs: Expr) -> f32 {
     }
 }
 
-fn op_token_to_expr_unchecked(token: &Token, lhs: Expr, rhs: Expr) -> Expr {
+fn op_token_wrap(token: &Token, lhs: Expr, rhs: Expr) -> Expr {
     match token {
         Token::Plus     => Expr::new_add(lhs, rhs),
         Token::Minus    => Expr::new_sub(lhs, rhs),
@@ -116,37 +141,36 @@ fn op_token_to_expr_unchecked(token: &Token, lhs: Expr, rhs: Expr) -> Expr {
     }
 }
 
+
+
+// NOTE: implicit multiplication is not used for now. I don't think that's good idea for plain text
+// based lang
+//
 // Parses expressions without operator between them.
 // Only first number as coefficient is parsed.
 // It's because there can be umbiguos cases and the parsing of them would be hell more complex.
 // So no, I will not implement it.
-fn parse_implicit_multiplication(mut lhs: Expr, mut is_lhs_const: IsConst, tokens: &mut TokenIter) -> (Expr, IsConst) {
-    while let Some(token) = tokens.peek() {
-        match token {
-            Token::Ident(_) => {
-                expect_token!(Token::Ident(s) in ITER tokens);
-    
-                lhs = Expr::new_mul(lhs, Expr::Var(s));
-                is_lhs_const = false;
-            },
-    
-            Token::LParen => {
-                let (inner, is_inner_const) = parse_parens(tokens);
+//fn parse_implicit_multiplication(mut lhs: Expr, mut is_lhs_const: IsConst, tokens: &mut TokenIter) -> (Expr, IsConst) {
+//    while let Some(token) = tokens.peek() {
+//        match token {
+//            Token::Ident(_) => {
+//                expect_token!(Token::Ident(s) in ITER tokens);
+//
+//                lhs = Expr::new_mul(lhs, Expr::Var(s));
+//                is_lhs_const = false;
+//            },
+//
+//            Token::LParen => {
+//                let (inner, is_inner_const) = parse_parens(tokens);
+//
+//                lhs = Expr::new_mul(lhs, inner);
+//                is_lhs_const = is_lhs_const && is_inner_const;
+//            },
+//
+//            _ => break,
+//        }
+//    }
+//
+//    (lhs, is_lhs_const)
+//}
 
-                lhs = Expr::new_mul(lhs, inner);
-                is_lhs_const = is_lhs_const && is_inner_const;
-            },
-    
-            _ => break,
-        }
-    }
-
-    (lhs, is_lhs_const)
-}
-
-fn parse_parens(tokens: &mut TokenIter) -> (Expr, IsConst) {
-    expect_token!(Token::LParen in ITER tokens);
-    let (inner, is_inner_const) = parse_expr(tokens);
-    expect_token!(Token::RParen in ITER tokens);
-    (inner, is_inner_const)
-}

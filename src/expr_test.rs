@@ -23,7 +23,7 @@ fn get_closure_with_var() {
 
 #[test]
 fn implicit_multiplication() {
-    let input = "2x(2 - x)(1 + 1) - 2x + 1.5x";
+    let input = "2x*(2 - x)*(1 + 1) - 2*x + 1.5*x";
     let expr = Expr::parse(input);
     let result = expr.eval_with_variable("x", 1.0);
     
@@ -32,7 +32,7 @@ fn implicit_multiplication() {
 
 #[test]
 fn aprox_derivative() {
-    let input = "x*x + 2x + 1";
+    let input = "x*x + 2*x + 1";
     let expr = Expr::parse(input);
 
     println!("{:?}", expr);
