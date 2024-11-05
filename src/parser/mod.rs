@@ -6,3 +6,4 @@ mod macros;
 
 pub use lexer::tokenize;
 pub use parser::parse;
+    pub use parse_error::ParseError;

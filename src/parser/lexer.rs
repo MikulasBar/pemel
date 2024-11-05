@@ -1,7 +1,8 @@
+use super::parse_error::ParseError;
 use super::token::Token;
 use super::macros::char_pat;
 
-pub fn tokenize(input: &str) -> Vec<Token> {
+pub fn tokenize(input: &str) -> Result<Vec<Token>, ParseError> {
     let mut tokens = vec![];
     let mut chars = input.chars().peekable();
 
@@ -71,13 +72,13 @@ pub fn tokenize(input: &str) -> Vec<Token> {
                 match_keyword(ident_str)
             },
 
-            _ => panic!("Unexpected character: {}", char),
+            _ => return Err(ParseError::UnexpectedChar(char)),
         };
 
         tokens.push(token);
     }
 
-    tokens
+    Ok(tokens)
 }
 
 fn parse_digits(string: &mut String, chars: &mut std::iter::Peekable<std::str::Chars>) {

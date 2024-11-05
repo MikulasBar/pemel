@@ -19,15 +19,15 @@ pub enum Expr {
 }
 
 impl Expr {
-    pub fn parse(input: &str) -> Self {
-        let tokens = parser::tokenize(input);
+    pub fn parse(input: &str) -> Result<Expr, parser::ParseError> {
+        let tokens = parser::tokenize(input)?;
         parser::parse(tokens)
     }
 
     pub fn num_unwrap(&self) -> f32 {
         match self {
             Expr::Num(n) => *n,
-            _ => panic!("Not a number"),
+            _ => panic!("Tried to unwrap NaN"),
         }
     }
 
