@@ -114,6 +114,7 @@ fn convert_to_func(ident: String, inner: Expr, is_const: IsConst) -> Expr {
 fn wrap_with_func(ident: String, inner: Expr) -> Expr {
     match ident.as_str() {
         "sin" => Expr::new_sin(inner),
+        "cos" => Expr::new_cos(inner),
         _ => panic!("Function name not recognized: {}", ident),
     }
 }

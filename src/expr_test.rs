@@ -57,8 +57,10 @@ fn power() {
     assert_eq!(minus_two, -23.0);
 }
 
+use std::f32::consts::{PI, E};
+
 #[test]
-fn sin_expr() {
+fn sin() {
     // TODO: Consider implementing rounding function for trigs.
     // But maybe it's not neccessary.
     let input = "sin(pi/2) + sin(pi)";
@@ -68,8 +70,25 @@ fn sin_expr() {
     assert!((result - 1.0).abs() <= f32::EPSILON);
 }
 
+#[test]
+fn cos() {
+    let input = "cos(pi) - cos(3*pi)";
+    let expr = Expr::parse(input);
+    let result = expr.eval_with_variable("pi", PI);
+    
+    assert!((result - 0.0).abs() <= f32::EPSILON);
+}
 
-
+//#[test]
+//fn log() {
+//    let input = "log_";
+//    let expr = Expr::parse(input);
+//    let result = expr.eval_with_variable("e", E);
+//
+//    assert!(result );
+//}
+//
+//
 
 
 
