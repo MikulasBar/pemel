@@ -13,22 +13,15 @@ pub enum Expr {
     Mul(Box<Expr>, Box<Expr>),
     Div(Box<Expr>, Box<Expr>),
     Pow(Box<Expr>, Box<Expr>),
+    Log(Box<Expr>, Box<Expr>),
     Sin(Box<Expr>),
     Cos(Box<Expr>),
-    Log(Box<Expr>, Box<Expr>),
 }
 
 impl Expr {
     pub fn parse(input: &str) -> Result<Expr, parser::ParseError> {
         let tokens = parser::tokenize(input)?;
         parser::parse(tokens)
-    }
-
-    pub fn num_unwrap(&self) -> f32 {
-        match self {
-            Expr::Num(n) => *n,
-            _ => panic!("Tried to unwrap NaN"),
-        }
     }
 
     pub fn eval_with_variable(&self, var: &str, value: f32) -> f32 {
@@ -137,6 +130,39 @@ impl Expr {
     //     }
     // }
 
+    pub fn substitute(&mut self, var: &str, value: impl Into<Expr>) {
+        match self {
+            Expr::Num(_) => (),
+            Expr::Var(s) if s == var => {
+                *self = value.into();
+            },
+            
+            expr_pat!(BINOP: lhs, rhs) => {
+                let value = value.into();
+                lhs.substitute(var, value.clone());
+                rhs.substitute(var, value);
+            },
+            
+            Expr::Sin(x) => x.substitute(var, value),
+
+            _ => (),
+        }
+    }
+
+    // You need to specify the variable for which you want to take the derivative
+    // Before you do that, you need to substitute all other variables with their values
+    pub fn aprox_derivative(&self, var: &str) -> Box<dyn Fn(f32, f32) -> f32 + '_> {
+        let f = self.get_closure_with_var(var);
+        let df = move |x, h: f32| {
+            (f(x + h) - f(x)) / h
+        };
+
+        Box::new(df)
+    }
+}
+
+// CONSTRUCTORS
+impl Expr {
     pub fn new_mul(lhs: impl Into<Self>, rhs: impl Into<Self>) -> Self {
         Expr::Mul(
             Box::new(lhs.into()),
@@ -183,38 +209,7 @@ impl Expr {
             Box::new(inner.into())
         )
     }
-
-    pub fn substitute(&mut self, var: &str, value: impl Into<Expr>) {
-        match self {
-            Expr::Num(_) => (),
-            Expr::Var(s) if s == var => {
-                *self = value.into();
-            },
-            
-            expr_pat!(BINOP: lhs, rhs) => {
-                let value = value.into();
-                lhs.substitute(var, value.clone());
-                rhs.substitute(var, value);
-            },
-            
-            Expr::Sin(x) => x.substitute(var, value),
-
-            _ => (),
-        }
-    }
-
-    // You need to specify the variable for which you want to take the derivative
-    // Before you do that, you need to substitute all other variables with their values
-    pub fn aprox_derivative(&self, var: &str) -> Box<dyn Fn(f32, f32) -> f32 + '_> {
-        let f = self.get_closure_with_var(var);
-        let df = move |x, h: f32| {
-            (f(x + h) - f(x)) / h
-        };
-
-        Box::new(df)
-    }
 }
-
 
 
 impl Display for Expr {
@@ -279,6 +274,4 @@ mod froms {
             Expr::Var(s)
         }
     }
-
-
 }
