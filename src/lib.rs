@@ -1,31 +1,13 @@
-// root of this library 
-pub mod utilities;
-pub mod functions;
-mod function_tree;
+#![allow(unused)]
 
-mod antlr_parser;
-mod visitor;
-mod test_functions;
+mod expr;
+mod parser;
+mod eval_error;
+mod macros;
 
-mod example;
+#[cfg(test)]
+mod expr_test;
+
+use expr::Expr;
 
 
-pub use function_tree::{
-    FnTree,
-    ParsingRules,
-    DefaultParsingRules,
-    Parser,
-    ParsingError,
-    ParsingResult,
-};
-
-pub use functions::{
-    Function,
-    EvalError,
-    FunctionType,
-    ChildFn,
-};
-
-pub use utilities::{
-    ToChildFn,
-};
