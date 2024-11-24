@@ -48,6 +48,11 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, ParseError> {
                 Token::RParen
             },
 
+            ',' => {
+                chars.next();
+                Token::Comma
+            },
+
             '0'..='9' => {
                 let mut num_str = String::new();
                 parse_digits(&mut num_str, &mut chars);

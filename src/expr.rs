@@ -18,6 +18,12 @@ pub enum Expr {
     Cos(Box<Expr>),
 }
 
+impl Default for Expr {
+    fn default() -> Self {
+        Expr::Num(0.0)
+    }
+}
+
 impl Expr {
     pub fn parse(input: &str) -> Result<Expr, parser::ParseError> {
         let tokens = parser::tokenize(input)?;
@@ -198,6 +204,13 @@ impl Expr {
         )
     }
 
+    pub fn new_log(base: impl Into<Self>, arg: impl Into<Self>) -> Self {
+        Expr::Log(
+            Box::new(base.into()),
+            Box::new(arg.into())
+        )
+    }
+
     pub fn new_sin(inner: impl Into<Self>) -> Self {
         Expr::Sin(
             Box::new(inner.into())
@@ -217,7 +230,7 @@ impl Display for Expr {
         match self {
             Expr::Num(n) => write!(f,"{}", n),
             Expr::Var(s) => write!(f, "{}", s),
-            Expr::Log(base, arg) => write!(f, "log_{}({})", base.to_string(), arg.to_string()),
+            Expr::Log(base, arg) => write!(f, "log({}, {})", base.to_string(), arg.to_string()),
 
             expr_pat!(BINOP: lhs, rhs) => write!(f, "({} {} {})",
                 lhs.to_string(),

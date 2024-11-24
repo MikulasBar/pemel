@@ -16,6 +16,7 @@ pub enum Token {
     // sin, and other special names are also Ident
     Ident(String),
     //Punctuated(Punctation, Vec<Box<Token>>),
+    Comma,
     EOF,
 }
 //

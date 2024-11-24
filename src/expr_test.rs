@@ -92,16 +92,17 @@ fn cos() {
     assert!((result - 0.0).abs() <= f32::EPSILON);
 }
 
-//#[test]
-//fn log() {
-//    let input = "log_";
-//    let expr = Expr::parse(input);
-//    let result = expr.eval_with_variable("e", E);
-//
-//    assert!(result );
-//}
-//
-//
+#[test]
+fn log() {
+   let input = "log(2, 8) + ln(e^2) - log(100)";
+   let expr = Expr::parse(input).unwrap();
+   let result = expr.eval_with_variable("e", E);
+
+   assert_eq!(result, 3.0);
+//    println!("{}", expr);
+}
+
+
 
 
 
