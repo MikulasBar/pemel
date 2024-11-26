@@ -74,8 +74,6 @@ use std::f32::consts::{PI, E};
 
 #[test]
 fn sin() {
-    // TODO: Consider implementing rounding function for trigs.
-    // But maybe it's not neccessary.
     let input = "sin(pi/2) + sin(pi)";
     let expr = Expr::parse(input).unwrap();
     let result = expr.eval_with_variable("pi", std::f32::consts::PI);

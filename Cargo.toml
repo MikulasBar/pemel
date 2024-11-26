@@ -1,5 +1,5 @@
 [package]
-name = "math-lib2"
+name = "math-lib"
 version = "0.1.0"
 edition = "2021"
 
