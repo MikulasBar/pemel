@@ -130,7 +130,10 @@ fn to_func(ident: String, args: Vec<Expr>, is_const: IsConst) -> Result<Expr, Pa
     let func = wrap_with_func(ident, args)?;
 
     if is_const {
-        Ok(func.eval_const().into())
+        let val = func.eval_const()
+            .map_err(|err| ParseError::EvalError(err))?;
+
+        Ok(val.into())
     } else {
         Ok(func)
     }   
@@ -175,7 +178,10 @@ fn to_binop(
     let expr = wrap_with_binop(token, lhs, rhs)?;
 
     if is_const {
-        Ok(Expr::from(expr.eval_const()))
+        let val = expr.eval_const()
+            .map_err(|err| ParseError::EvalError(err))?;
+
+        Ok(val.into())
     } else {
         Ok(expr)
     }

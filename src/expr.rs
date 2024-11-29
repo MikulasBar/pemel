@@ -1,6 +1,7 @@
 use core::panic;
 use std::fmt::Display;
 
+use crate::eval_error::EvalError;
 use crate::macros::expr_pat;
 use crate::parser;
 
@@ -30,67 +31,96 @@ impl Expr {
         parser::parse(tokens)
     }
 
-    pub fn eval_with_variable(&self, var: &str, value: f32) -> f32 {
+    pub fn eval_with_variable(&self, var: &str, value: f32) -> Result<f32, EvalError> {
         match self {
-            Expr::Num(n) => *n,
+            Expr::Num(n) => Ok(*n),
             Expr::Var(s) => if s == var {
-                value
+                Ok(value)
             } else {
-                panic!("Variable {} is not defined", s)
+                Err(EvalError::VariableNotDefined(s.clone()))
             },
             
             expr_pat!(BINOP: lhs, rhs) => {
-                let lhs = lhs.eval_with_variable(var, value);
-                let rhs = rhs.eval_with_variable(var, value);
+                let lhs = lhs.eval_with_variable(var, value)?;
+                let rhs = rhs.eval_with_variable(var, value)?;
                 self.bin_op_unchecked(lhs, rhs)
             },
 
             expr_pat!(UNOP: inner) => {
-                let inner = inner.eval_with_variable(var, value);
+                let inner = inner.eval_with_variable(var, value)?;
                 self.un_op_unchecked(inner)
             }
         }
     }
 
 
-    pub fn eval_const(&self) -> f32 {
+    pub fn eval_const(&self) -> Result<f32, EvalError> {
         match self {
-            Expr::Num(n) => *n,
-            Expr::Var(_) => panic!("Variable found in constant expression"),
+            Expr::Num(n) => Ok(*n),
+            Expr::Var(s) => return Err(EvalError::VariableNotDefined(s.clone())),
+
             expr_pat!(BINOP: lhs, rhs) => {
-                let lhs = lhs.eval_const();
-                let rhs = rhs.eval_const();
+                let lhs = lhs.eval_const()?;
+                let rhs = rhs.eval_const()?;
                 self.bin_op_unchecked(lhs, rhs)
             },
 
             expr_pat!(UNOP: inner) => {
-                let inner = inner.eval_const();
+                let inner = inner.eval_const()?;
                 self.un_op_unchecked(inner)
             },
         }
     }
 
-    fn bin_op_unchecked(&self, lhs: f32, rhs: f32) -> f32 {
-        match self {
+    // This function just checks for the operator but not the operands
+    // This can seem unlogical but it enables matching for more than one operator at once
+    // (see the eval_const ...) 
+    fn bin_op_unchecked(&self, lhs: f32, rhs: f32) -> Result<f32, EvalError> {
+        Ok(match self {
             Expr::Add(_, _) => lhs + rhs,
             Expr::Sub(_, _) => lhs - rhs,
             Expr::Mul(_, _) => lhs * rhs,
-            Expr::Div(_, _) => lhs / rhs,
-            Expr::Pow(_, _) => lhs.powf(rhs),
-            Expr::Log(_, _) => rhs.log(lhs),
+            Expr::Div(_, _) => {
+                if rhs == 0.0 {
+                    return Err(EvalError::DivisionByZero);
+                }
+
+                lhs / rhs
+            },
+
+            Expr::Pow(_, _) => {
+                if lhs == 0.0 && rhs <= 0.0 {
+                    return Err(EvalError::InvalidExponentiation);
+                }
+                
+                lhs.powf(rhs)
+            },
+
+            Expr::Log(_, _) => {
+                if lhs <= 0.0 || rhs <= 0.0 {
+                    return Err(EvalError::InvalidLogarithm);
+                }
+
+                rhs.log(lhs)
+            },
+
+            // Panic is safe because we know it's binop
             _ => panic!("Not a binary operation: {:?}", self),
-        }
+        })
     }
 
-    fn un_op_unchecked(&self, inner: f32) -> f32 {
-        match self {
+    fn un_op_unchecked(&self, inner: f32) -> Result<f32, EvalError> {
+        Ok(match self {
             Expr::Sin(_) => inner.sin(),
             Expr::Cos(_) => inner.cos(),
+
+            // Panic is safe because we know it's binop
             _ => panic!("Not a unary function: {:?}", self)
-        }
+        })
     }
 
 
+    // TODO: Do research on how this function can increase performance, and if it's worth it to implement it
     pub fn get_closure_with_var(&self, var: &str) -> Box<dyn Fn(f32) -> f32 + '_> {
         match self {
             Expr::Num(n) => Box::new(|_| *n),
@@ -138,7 +168,6 @@ impl Expr {
 
     pub fn substitute(&mut self, var: &str, value: impl Into<Expr>) {
         match self {
-            Expr::Num(_) => (),
             Expr::Var(s) if s == var => {
                 *self = value.into();
             },
@@ -149,9 +178,10 @@ impl Expr {
                 rhs.substitute(var, value);
             },
             
-            Expr::Sin(x) => x.substitute(var, value),
-
-            _ => (),
+            expr_pat!(UNOP: inner) => inner.substitute(var, value),
+            
+            Expr::Num(_) => (),
+            Expr::Var(_) => (), // I don't want to have the wild card here, because I want to be explicit
         }
     }
 
