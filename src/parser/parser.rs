@@ -1,6 +1,6 @@
 use core::f32;
 
-use super::token::{self, Token, TokenIter};
+use super::token::{Token, TokenIter};
 use super::parse_error::ParseError;
 use super::macros::expect_token;
 use crate::expr::Expr;

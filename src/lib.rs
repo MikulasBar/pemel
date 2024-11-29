@@ -1,4 +1,4 @@
-#![allow(unused)]
+// #![allow(unused)]
 
 mod expr;
 mod parser;
@@ -8,6 +8,10 @@ mod macros;
 #[cfg(test)]
 mod expr_test;
 
-use expr::Expr;
-
+pub mod prelude {
+    pub use crate::expr::Expr;
+    pub use crate::eval_error::EvalError;
+    pub use crate::parser::ParseError;
+    pub use crate::parser::Token;
+}
 

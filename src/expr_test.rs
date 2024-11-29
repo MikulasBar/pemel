@@ -49,6 +49,7 @@ fn const_expr_eval() {
     let result = expr.eval_const();
 
     assert_eq!(expr, Expr::Num(24.5001));
+    assert_eq!(result, Ok(24.5001));
 }
 
 #[test]
@@ -138,7 +139,7 @@ fn log() {
 //  These test can't fail because they are just for testing functionality.  //
 //////////////////////////////////////////////////////////////////////////////
 
-// #[test]
+#[test]
 fn display() {
     let input = "2 + 7 - x + 8 * (x - 1) - 2";
     let expr = Expr::parse(input).unwrap();
