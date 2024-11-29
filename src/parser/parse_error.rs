@@ -4,4 +4,6 @@ use super::token::Token;
 pub enum ParseError {
     UnexpectedToken(Token),
     UnexpectedChar(char),
+    WrongNumberOfArgs(usize),
+    FunctionNotRecognized(String),
 }

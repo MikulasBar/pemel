@@ -61,7 +61,7 @@ fn parse_binop(
 
         let (rhs, is_rhs_const) = parse_prev(tokens)?;
         let are_both_const = is_lhs_const && is_rhs_const;
-        lhs = to_binop(&token, lhs, rhs, are_both_const);
+        lhs = to_binop(&token, lhs, rhs, are_both_const)?;
         is_lhs_const = are_both_const;
     }
 
@@ -89,8 +89,11 @@ fn parse_ident(tokens: &mut TokenIter) -> ParseResult {
     expect_token!(Token::Ident(ident) in ITER tokens);
 
     if let Some(Token::LParen) = tokens.peek() {
-        let (inner, is_const) = parse_parens(tokens)?;
-        let func = to_func(ident, inner, is_const);
+        expect_token!(Token::LParen in ITER tokens);
+        let (args, is_const) = parse_args(tokens)?;
+        expect_token_ret!(Token::RParen in ITER tokens);
+
+        let func = to_func(ident, args, is_const)?;
         return Ok((func, is_const));
     }
 
@@ -105,22 +108,61 @@ fn parse_parens(tokens: &mut TokenIter) -> ParseResult {
     result
 }
 
-fn to_func(ident: String, inner: Expr, is_const: IsConst) -> Expr {
-    let func = wrap_with_func(ident, inner);
+fn parse_args(tokens: &mut TokenIter) -> Result<(Vec<Expr>, IsConst), ParseError> {
+    let mut args = vec![];
+    let mut is_const = true;
+
+    loop {
+        let (arg, is_arg_const) = parse_expr(tokens)?;
+        args.push(arg);
+        is_const = is_const && is_arg_const;
+
+        if let Some(Token::Comma) = tokens.peek() {
+            tokens.next();
+        } else {
+            break;
+        }
+    }
+
+    Ok((args, is_const))
+}
+
+fn to_func(ident: String, args: Vec<Expr>, is_const: IsConst) -> Result<Expr, ParseError> {
+    let func = wrap_with_func(ident, args)?;
 
     if is_const {
-        func.eval_const().into()
+        Ok(func.eval_const().into())
     } else {
-        func
+        Ok(func)
     }   
 }
 
-fn wrap_with_func(ident: String, inner: Expr) -> Expr {
-    match ident.as_str() {
-        "sin" => Expr::new_sin(inner),
-        "cos" => Expr::new_cos(inner),
-        _ => panic!("Function name not recognized: {}", ident),
+// TODO: Refactor this function
+fn wrap_with_func(ident: String, mut args: Vec<Expr>) -> Result<Expr, ParseError> {
+    use std::mem;
+
+    let len = args.len();
+
+    if len > 2 || args.is_empty() {
+        return Err(ParseError::WrongNumberOfArgs(len));
     }
+
+    let arg0 = mem::take(&mut args[0]);
+
+    Ok(match (ident.as_str(), len) {
+        ("sin", 1) => Expr::new_sin(arg0),
+        ("cos", 1) => Expr::new_cos(arg0),
+        ("ln", 1)  => Expr::new_log(f32::consts::E, arg0),
+        ("log", 1) => Expr::new_log(Expr::Num(10.0), arg0),
+
+        ("log", 2) => {
+            let arg1 = mem::take(&mut args[1]);
+            Expr::new_log(arg0, arg1)
+        }
+
+        ("cos" | "sin" | "ln" | "log", _) => return Err(ParseError::WrongNumberOfArgs(len)),
+        _ => return Err(ParseError::FunctionNotRecognized(ident)),
+    })
 }
 
 
@@ -130,25 +172,25 @@ fn to_binop(
     lhs: Expr,
     rhs: Expr,
     is_const: bool,
-) -> Expr {
-    let expr = wrap_with_binop(token, lhs, rhs);
+) -> Result<Expr, ParseError> {
+    let expr = wrap_with_binop(token, lhs, rhs)?;
 
     if is_const {
-        expr.eval_const().into()
+        Ok(Expr::from(expr.eval_const()))
     } else {
-        expr
+        Ok(expr)
     }
 }
 
-fn wrap_with_binop(token: &Token, lhs: Expr, rhs: Expr) -> Expr {
-    match token {
+fn wrap_with_binop(token: &Token, lhs: Expr, rhs: Expr) -> Result<Expr, ParseError> {
+    Ok(match token {
         Token::Plus     => Expr::new_add(lhs, rhs),
         Token::Minus    => Expr::new_sub(lhs, rhs),
         Token::Star     => Expr::new_mul(lhs, rhs),
         Token::Slash    => Expr::new_div(lhs, rhs),
         Token::Caret    => Expr::new_pow(lhs, rhs),
-        _ => panic!("Unexpected token {:?}", token),
-    }
+        _ => return Err(ParseError::UnexpectedToken(token.clone())),
+    })
 }
 
 

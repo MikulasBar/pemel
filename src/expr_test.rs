@@ -1,4 +1,5 @@
 use crate::expr::Expr;
+use crate::parser::ParseError;
 
 #[test]
 fn bad_syntax() {
@@ -10,6 +11,22 @@ fn bad_syntax() {
 
     assert!(e1.is_err());
     assert!(e2.is_err());
+}
+
+#[test]
+fn unrecognized_function() {
+    let input = "sinc(3 * 8)";
+    let expr = Expr::parse(input);
+
+    assert!(matches!(expr, Err(ParseError::FunctionNotRecognized(_))));
+}
+
+#[test]
+fn wrong_number_of_args() {
+    let input = "cos(2, 4)";
+    let expr = Expr::parse(input);
+
+    assert!(matches!(expr, Err(ParseError::WrongNumberOfArgs(_))));
 }
 
 
@@ -24,7 +41,7 @@ fn const_expr_eval() {
 
 #[should_panic]
 #[test]
-fn const_expr_eval_should_panic() {
+fn wrong_const_expr_eval() {
     let input = "2.5*8 + 4*(1 - x)";
     let expr = Expr::parse(input).unwrap();
     let result = expr.eval_const();
@@ -92,16 +109,16 @@ fn cos() {
     assert!((result - 0.0).abs() <= f32::EPSILON);
 }
 
-//#[test]
-//fn log() {
-//    let input = "log_";
-//    let expr = Expr::parse(input);
-//    let result = expr.eval_with_variable("e", E);
-//
-//    assert!(result );
-//}
-//
-//
+#[test]
+fn log() {
+   let input = "log(2, 8) + ln(e^2) - log(100)";
+   let expr = Expr::parse(input).unwrap();
+   let result = expr.eval_with_variable("e", E);
+
+   assert_eq!(result, 3.0);
+}
+
+
 
 
 
