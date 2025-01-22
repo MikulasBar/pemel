@@ -1,10 +1,10 @@
 mod lexer;
-mod token;
+mod macros;
 mod parse_error;
 mod parser;
-mod macros;
+mod token;
 
 pub use lexer::tokenize;
-pub use parser::parse;
 pub use parse_error::ParseError;
+pub use parser::parse;
 pub use token::Token;

@@ -41,7 +41,6 @@ fn wrong_number_of_args() {
     assert!(matches!(expr, Err(ParseError::WrongNumberOfArgs(_))));
 }
 
-
 #[test]
 fn const_expr_eval() {
     let input = "8 + 6 * 2.5  + (2 - 2) + 1.5001";
@@ -61,7 +60,6 @@ fn wrong_const_expr_eval() {
     assert_eq!(result, Err(EvalError::VariableNotDefined("x".to_string())));
 }
 
-
 #[test]
 fn get_closure_with_var() {
     let input = "7.55 - x + 8 * (x - 1) - 2";
@@ -80,10 +78,9 @@ fn aprox_derivative() {
     println!("{:?}", expr);
     let derivative = expr.aprox_derivative("x");
     let result = derivative(2.0, 0.00001);
-    
+
     assert_eq!(result.round(), 6.0);
 }
-
 
 #[test]
 fn power() {
@@ -101,7 +98,7 @@ fn power() {
     assert_eq!(minus_two, -23.0);
 }
 
-use std::f32::consts::{PI, E};
+use std::f32::consts::{E, PI};
 
 #[test]
 fn sin() {
@@ -117,23 +114,18 @@ fn cos() {
     let input = "cos(pi) - cos(3*pi)";
     let expr = Expr::parse(input).unwrap();
     let result = expr.eval_with_variable("pi", PI).unwrap();
-    
+
     assert!((result - 0.0).abs() <= f32::EPSILON);
 }
 
 #[test]
 fn log() {
-   let input = "log(2, 8) + ln(e^2) - log(100)";
-   let expr = Expr::parse(input).unwrap();
-   let result = expr.eval_with_variable("e", E).unwrap();
+    let input = "log(2, 8) + ln(e^2) - log(100)";
+    let expr = Expr::parse(input).unwrap();
+    let result = expr.eval_with_variable("e", E).unwrap();
 
-   assert_eq!(result, 3.0);
+    assert_eq!(result, 3.0);
 }
-
-
-
-
-
 
 //////////////////////////////////////////////////////////////////////////////
 //  These test can't fail because they are just for testing functionality.  //
@@ -146,6 +138,3 @@ fn display() {
 
     print!("{}", expr);
 }
-
-
-

@@ -1,8 +1,8 @@
 use core::f32;
 
-use super::token::{Token, TokenIter};
-use super::parse_error::ParseError;
 use super::macros::expect_token;
+use super::parse_error::ParseError;
+use super::token::{Token, TokenIter};
 use crate::expr::Expr;
 use crate::parser::macros::expect_token_ret;
 
@@ -26,12 +26,11 @@ fn parse_expr(tokens: &mut TokenIter) -> ParseResult {
     result
 }
 
-
 fn parse_sum(tokens: &mut TokenIter) -> ParseResult {
     parse_binop(
         |t| matches!(t, Some(Token::Plus | Token::Minus)),
         |iter| parse_product(iter),
-        tokens
+        tokens,
     )
 }
 
@@ -39,7 +38,7 @@ fn parse_product(tokens: &mut TokenIter) -> ParseResult {
     parse_binop(
         |t| matches!(t, Some(Token::Star | Token::Slash)),
         |iter| parse_power(iter),
-        tokens
+        tokens,
     )
 }
 
@@ -47,14 +46,14 @@ fn parse_power(tokens: &mut TokenIter) -> ParseResult {
     parse_binop(
         |t| matches!(t, Some(Token::Caret)),
         |iter| parse_atom(iter),
-        tokens
+        tokens,
     )
 }
 
 fn parse_binop(
     match_op: fn(Option<&Token>) -> bool,
     parse_prev: fn(&mut TokenIter) -> ParseResult,
-    tokens: &mut TokenIter
+    tokens: &mut TokenIter,
 ) -> ParseResult {
     let (mut lhs, mut is_lhs_const) = parse_prev(tokens)?;
 
@@ -78,7 +77,7 @@ fn parse_atom(tokens: &mut TokenIter) -> ParseResult {
         Token::Number(_) => {
             expect_token!(Token::Number(n) in ITER tokens);
             Ok((Expr::Num(n), true))
-        },
+        }
 
         _ => Err(ParseError::UnexpectedToken(tokens.next().unwrap())),
     }
@@ -130,13 +129,14 @@ fn to_func(ident: String, args: Vec<Expr>, is_const: IsConst) -> Result<Expr, Pa
     let func = wrap_with_func(ident, args)?;
 
     if is_const {
-        let val = func.eval_const()
+        let val = func
+            .eval_const()
             .map_err(|err| ParseError::EvalError(err))?;
 
         Ok(val.into())
     } else {
         Ok(func)
-    }   
+    }
 }
 
 // TODO: Refactor this function
@@ -154,7 +154,7 @@ fn wrap_with_func(ident: String, mut args: Vec<Expr>) -> Result<Expr, ParseError
     Ok(match (ident.as_str(), len) {
         ("sin", 1) => Expr::new_sin(arg0),
         ("cos", 1) => Expr::new_cos(arg0),
-        ("ln", 1)  => Expr::new_log(f32::consts::E, arg0),
+        ("ln", 1) => Expr::new_log(f32::consts::E, arg0),
         ("log", 1) => Expr::new_log(Expr::Num(10.0), arg0),
 
         ("log", 2) => {
@@ -167,18 +167,12 @@ fn wrap_with_func(ident: String, mut args: Vec<Expr>) -> Result<Expr, ParseError
     })
 }
 
-
-
-fn to_binop(
-    token: &Token,
-    lhs: Expr,
-    rhs: Expr,
-    is_const: bool,
-) -> Result<Expr, ParseError> {
+fn to_binop(token: &Token, lhs: Expr, rhs: Expr, is_const: bool) -> Result<Expr, ParseError> {
     let expr = wrap_with_binop(token, lhs, rhs)?;
 
     if is_const {
-        let val = expr.eval_const()
+        let val = expr
+            .eval_const()
             .map_err(|err| ParseError::EvalError(err))?;
 
         Ok(val.into())
@@ -189,13 +183,11 @@ fn to_binop(
 
 fn wrap_with_binop(token: &Token, lhs: Expr, rhs: Expr) -> Result<Expr, ParseError> {
     Ok(match token {
-        Token::Plus     => Expr::new_add(lhs, rhs),
-        Token::Minus    => Expr::new_sub(lhs, rhs),
-        Token::Star     => Expr::new_mul(lhs, rhs),
-        Token::Slash    => Expr::new_div(lhs, rhs),
-        Token::Caret    => Expr::new_pow(lhs, rhs),
+        Token::Plus => Expr::new_add(lhs, rhs),
+        Token::Minus => Expr::new_sub(lhs, rhs),
+        Token::Star => Expr::new_mul(lhs, rhs),
+        Token::Slash => Expr::new_div(lhs, rhs),
+        Token::Caret => Expr::new_pow(lhs, rhs),
         _ => return Err(ParseError::UnexpectedToken(token.clone())),
     })
 }
-
-
