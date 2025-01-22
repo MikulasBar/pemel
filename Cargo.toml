@@ -1,7 +1,15 @@
 [package]
-name = "math-lib"
+name = "pemel"
 version = "0.1.0"
 edition = "2021"
+authors = ["Mikulas Bartacek <mikulasbartac@gmail.com>"]
+description = "Parsing and Evaluating of Math Expressions Library"
+homepage = "https://github.com/MikulasBar/pemel"
+repository = "https://github.com/MikulasBar/pemel"
+license = "MIT"
+keywords = ["math", "expression", "parser", "evaluator"]
+categories = ["science", "math"]
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

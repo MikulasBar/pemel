@@ -1,4 +1,5 @@
 // #![allow(unused)]
+// #![deny(warnings)]
 
 mod expr;
 mod parser;
