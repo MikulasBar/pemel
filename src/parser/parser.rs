@@ -9,9 +9,9 @@ use crate::parser::macros::expect_token_ret;
 type IsConst = bool;
 type ParseResult = Result<(Expr, IsConst), ParseError>;
 
-pub fn parse(tokens: Vec<Token>) -> Result<Expr, ParseError> {
+pub fn parse(tokens: Vec<Token>, implicit_evaluation: bool) -> Result<Expr, ParseError> {
     let mut tokens = tokens.into_iter().peekable();
-    let result = parse_expr(&mut tokens).map(|x| x.0);
+    let result = parse_expr(&mut tokens, implicit_evaluation).map(|x| x.0);
 
     if tokens.peek().is_some() {
         return Err(ParseError::UnexpectedToken(tokens.next().unwrap()));
@@ -20,40 +20,44 @@ pub fn parse(tokens: Vec<Token>) -> Result<Expr, ParseError> {
     result
 }
 
-fn parse_expr(tokens: &mut TokenIter) -> ParseResult {
-    let result = parse_sum(tokens);
+fn parse_expr(tokens: &mut TokenIter, implicit_evaluation: bool) -> ParseResult {
+    let result = parse_sum(tokens, implicit_evaluation);
 
     result
 }
 
-fn parse_sum(tokens: &mut TokenIter) -> ParseResult {
+fn parse_sum(tokens: &mut TokenIter, implicit_evaluation: bool) -> ParseResult {
     parse_binop(
         |t| matches!(t, Some(Token::Plus | Token::Minus)),
-        |iter| parse_product(iter),
+        |iter| parse_product(iter, implicit_evaluation),
         tokens,
+        implicit_evaluation
     )
 }
 
-fn parse_product(tokens: &mut TokenIter) -> ParseResult {
+fn parse_product(tokens: &mut TokenIter, implicit_evaluation: bool) -> ParseResult {
     parse_binop(
         |t| matches!(t, Some(Token::Star | Token::Slash)),
-        |iter| parse_power(iter),
+        |iter| parse_power(iter, implicit_evaluation),
         tokens,
+        implicit_evaluation
     )
 }
 
-fn parse_power(tokens: &mut TokenIter) -> ParseResult {
+fn parse_power(tokens: &mut TokenIter, implicit_evaluation: bool) -> ParseResult {
     parse_binop(
         |t| matches!(t, Some(Token::Caret)),
-        |iter| parse_atom(iter),
+        |iter| parse_atom(iter, implicit_evaluation),
         tokens,
+        implicit_evaluation
     )
 }
 
 fn parse_binop(
     match_op: fn(Option<&Token>) -> bool,
-    parse_prev: fn(&mut TokenIter) -> ParseResult,
+    parse_prev: impl Fn(&mut TokenIter) -> ParseResult,
     tokens: &mut TokenIter,
+    implicit_evaluation: bool,
 ) -> ParseResult {
     let (mut lhs, mut is_lhs_const) = parse_prev(tokens)?;
 
@@ -62,18 +66,18 @@ fn parse_binop(
 
         let (rhs, is_rhs_const) = parse_prev(tokens)?;
         let are_both_const = is_lhs_const && is_rhs_const;
-        lhs = to_binop(&token, lhs, rhs, are_both_const)?;
+        lhs = to_binop(&token, lhs, rhs, are_both_const && implicit_evaluation)?;
         is_lhs_const = are_both_const;
     }
 
     Ok((lhs, is_lhs_const))
 }
 
-fn parse_atom(tokens: &mut TokenIter) -> ParseResult {
+fn parse_atom(tokens: &mut TokenIter, implicit_evaluation: bool) -> ParseResult {
     let sign = parse_sign(tokens);
     let atom = match tokens.peek().unwrap() {
-        Token::LParen => parse_parens(tokens),
-        Token::Ident(_) => parse_ident(tokens),
+        Token::LParen => parse_parens(tokens, implicit_evaluation),
+        Token::Ident(_) => parse_ident(tokens, implicit_evaluation),
 
         Token::Number(_) => {
             expect_token!(Token::Number(n) in ITER tokens);
@@ -104,35 +108,35 @@ fn parse_sign(tokens: &mut TokenIter) -> f32 {
     sign
 }
 
-fn parse_ident(tokens: &mut TokenIter) -> ParseResult {
+fn parse_ident(tokens: &mut TokenIter, implicit_evaluation: bool) -> ParseResult {
     expect_token!(Token::Ident(ident) in ITER tokens);
 
     if let Some(Token::LParen) = tokens.peek() {
         expect_token!(Token::LParen in ITER tokens);
-        let (args, is_const) = parse_args(tokens)?;
+        let (args, is_const) = parse_args(tokens, implicit_evaluation)?;
         expect_token_ret!(Token::RParen in ITER tokens);
 
-        let func = to_func(ident, args, is_const)?;
+        let func = to_func(ident, args, is_const && implicit_evaluation)?;
         return Ok((func, is_const));
     }
 
     Ok((ident.into(), false))
 }
 
-fn parse_parens(tokens: &mut TokenIter) -> ParseResult {
+fn parse_parens(tokens: &mut TokenIter, implicit_evaluation: bool) -> ParseResult {
     expect_token!(Token::LParen in ITER tokens);
-    let result = parse_expr(tokens);
+    let result = parse_expr(tokens, implicit_evaluation);
     println!("{:?}", tokens.peek());
     expect_token_ret!(Token::RParen in ITER tokens);
     result
 }
 
-fn parse_args(tokens: &mut TokenIter) -> Result<(Vec<Expr>, IsConst), ParseError> {
+fn parse_args(tokens: &mut TokenIter, implicit_evaluation: bool) -> Result<(Vec<Expr>, IsConst), ParseError> {
     let mut args = vec![];
     let mut is_const = true;
 
     loop {
-        let (arg, is_arg_const) = parse_expr(tokens)?;
+        let (arg, is_arg_const) = parse_expr(tokens, implicit_evaluation)?;
         args.push(arg);
         is_const = is_const && is_arg_const;
 

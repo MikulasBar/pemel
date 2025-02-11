@@ -51,9 +51,9 @@ impl Default for Expr {
 }
 
 impl Expr {
-    pub fn parse(input: &str) -> Result<Expr, parser::ParseError> {
+    pub fn parse(input: &str, implicit_evaluation: bool) -> Result<Expr, parser::ParseError> {
         let tokens = parser::tokenize(input)?;
-        parser::parse(tokens)
+        parser::parse(tokens, implicit_evaluation)
     }
 
     pub fn eval_with_var(&self, var: &str, value: f32) -> Result<f32, EvalError> {
