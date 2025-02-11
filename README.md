@@ -12,6 +12,10 @@
 - Basic arithmetic operations
 - Trigonometric functions
 - Exponential and logarithmic functions
+- Absolute value function
+- Evaluation with multiple variables
+- Numeric derivatives
+- Implicit evaluation during parsing
 
 ## Usage
 
@@ -22,8 +26,8 @@ use pemel::prelude::*;
 
 fn main() {
     let input = "2 * x^2 - 5 * log(x)";
-    let expr = Expr::parse(input).unwrap();
-    let result = expr.eval_with_variable("x", 10.0).unwrap();
+    let expr = Expr::parse(input, true).unwrap();
+    let result = expr.eval_with_var("x", 10.0).unwrap();
 
     println!("{}", result); // Output: 195.0
 }
