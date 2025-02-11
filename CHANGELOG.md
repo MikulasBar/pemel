@@ -11,3 +11,18 @@ All notable changes to this project will be documented in this file.
 - Error handling for syntax errors and evaluation errors.
 - Basic arithmetic, logarithms, exponents, and trigonometric functions.
 - Unit tests for core functionality.
+
+
+## 0.2.0 - 2024-02-05
+
+### Added
+- Support for tangent and cotangent functions.
+- Evaluation with multiple variables.
+- Absolute value function.
+- Support for prefix unary operators ( +a, -a).
+
+### Changed
+- Changed approx_derivative() function to return a value instead of a function.
+
+### Removed
+- get_closure() function.

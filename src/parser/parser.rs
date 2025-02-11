@@ -70,7 +70,8 @@ fn parse_binop(
 }
 
 fn parse_atom(tokens: &mut TokenIter) -> ParseResult {
-    match tokens.peek().unwrap() {
+    let sign = parse_sign(tokens);
+    let atom = match tokens.peek().unwrap() {
         Token::LParen => parse_parens(tokens),
         Token::Ident(_) => parse_ident(tokens),
 
@@ -80,7 +81,27 @@ fn parse_atom(tokens: &mut TokenIter) -> ParseResult {
         }
 
         _ => Err(ParseError::UnexpectedToken(tokens.next().unwrap())),
+    };
+
+    if sign == -1.0 {
+        let (expr, is_const) = atom?;
+        Ok((Expr::new_mul(-1.0, expr), is_const))
+    } else {
+        atom
     }
+}
+
+fn parse_sign(tokens: &mut TokenIter) -> f32 {
+    let mut sign = 1.0;
+
+    while let Some(&Token::Plus | &Token::Minus) = tokens.peek() {
+        let token = tokens.next().unwrap();
+        if let Token::Plus = token {
+            sign *= -1.0;
+        }
+    }
+
+    sign
 }
 
 fn parse_ident(tokens: &mut TokenIter) -> ParseResult {
@@ -154,6 +175,9 @@ fn wrap_with_func(ident: String, mut args: Vec<Expr>) -> Result<Expr, ParseError
     Ok(match (ident.as_str(), len) {
         ("sin", 1) => Expr::new_sin(arg0),
         ("cos", 1) => Expr::new_cos(arg0),
+        ("tan", 1) => Expr::new_tan(arg0),
+        ("cot", 1) => Expr::new_cot(arg0),
+        ("abs", 1) => Expr::new_abs(arg0),
         ("ln", 1) => Expr::new_log(f32::consts::E, arg0),
         ("log", 1) => Expr::new_log(Expr::Num(10.0), arg0),
 
@@ -162,7 +186,7 @@ fn wrap_with_func(ident: String, mut args: Vec<Expr>) -> Result<Expr, ParseError
             Expr::new_log(arg0, arg1)
         }
 
-        ("cos" | "sin" | "ln" | "log", _) => return Err(ParseError::WrongNumberOfArgs(len)),
+        ("cos" | "sin" | "ln" | "log" | "tan" | "cot", _) => return Err(ParseError::WrongNumberOfArgs(len)),
         _ => return Err(ParseError::FunctionNotRecognized(ident)),
     })
 }

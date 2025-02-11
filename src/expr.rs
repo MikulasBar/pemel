@@ -39,6 +39,9 @@ pub enum Expr {
     Log(Box<Expr>, Box<Expr>),
     Sin(Box<Expr>),
     Cos(Box<Expr>),
+    Tan(Box<Expr>),
+    Cot(Box<Expr>),
+    Abs(Box<Expr>),
 }
 
 impl Default for Expr {
@@ -53,7 +56,7 @@ impl Expr {
         parser::parse(tokens)
     }
 
-    pub fn eval_with_variable(&self, var: &str, value: f32) -> Result<f32, EvalError> {
+    pub fn eval_with_var(&self, var: &str, value: f32) -> Result<f32, EvalError> {
         match self {
             Expr::Num(n) => Ok(*n),
             Expr::Var(s) => {
@@ -65,13 +68,44 @@ impl Expr {
             }
 
             expr_pat!(BINOP: lhs, rhs) => {
-                let lhs = lhs.eval_with_variable(var, value)?;
-                let rhs = rhs.eval_with_variable(var, value)?;
+                let lhs = lhs.eval_with_var(var, value)?;
+                let rhs = rhs.eval_with_var(var, value)?;
                 self.bin_op_unchecked(lhs, rhs)
             }
 
             expr_pat!(UNOP: inner) => {
-                let inner = inner.eval_with_variable(var, value)?;
+                let inner = inner.eval_with_var(var, value)?;
+                self.un_op_unchecked(inner)
+            }
+        }
+    }
+
+    /// Evaluate the expression with the given values for the variables
+    /// 
+    /// This function is not meant to be used for lot of variables
+    /// 
+    /// It is O(n) where n is the number of variables
+    pub fn eval_with(&self, values: &[(&str, f32)]) -> Result<f32, EvalError> {
+        match self {
+            Expr::Num(n) => Ok(*n),
+            Expr::Var(s) => {
+                for (var, value) in values {
+                    if s == var {
+                        return Ok(*value);
+                    }
+                }
+
+                Err(EvalError::VariableNotDefined(s.clone()))
+            }
+
+            expr_pat!(BINOP: lhs, rhs) => {
+                let lhs = lhs.eval_with(values)?;
+                let rhs = rhs.eval_with(values)?;
+                self.bin_op_unchecked(lhs, rhs)
+            }
+
+            expr_pat!(UNOP: inner) => {
+                let inner = inner.eval_with(values)?;
                 self.un_op_unchecked(inner)
             }
         }
@@ -134,49 +168,22 @@ impl Expr {
 
     fn un_op_unchecked(&self, inner: f32) -> Result<f32, EvalError> {
         Ok(match self {
+            Expr::Abs(_) => inner.abs(),
             Expr::Sin(_) => inner.sin(),
             Expr::Cos(_) => inner.cos(),
+            Expr::Tan(_) => inner.tan(),
+            Expr::Cot(_) => {
+                let tan = inner.tan();
+                if tan == 0.0 {
+                    return Err(EvalError::DivisionByZero);
+                } else  {
+                    1.0 / tan
+                }
+            },
 
             // Panic is safe because we know it's binop
             _ => panic!("Not a unary function: {:?}", self),
         })
-    }
-
-    // TODO: Do research on how this function can increase performance, and if it's worth it to implement it
-    pub fn get_closure_with_var(&self, var: &str) -> Box<dyn Fn(f32) -> f32 + '_> {
-        match self {
-            Expr::Num(n) => Box::new(|_| *n),
-            Expr::Var(s) => {
-                if s == var {
-                    Box::new(|x| x)
-                } else {
-                    panic!("Variable '{}' is not defined", s)
-                }
-            }
-
-            expr_pat!(BINOP: lhs, rhs) => {
-                let lhs = lhs.get_closure_with_var(var);
-                let rhs = rhs.get_closure_with_var(var);
-                match self {
-                    Expr::Add(_, _) => Box::new(move |x| lhs(x) + rhs(x)),
-                    Expr::Sub(_, _) => Box::new(move |x| lhs(x) - rhs(x)),
-                    Expr::Mul(_, _) => Box::new(move |x| lhs(x) * rhs(x)),
-                    Expr::Div(_, _) => Box::new(move |x| lhs(x) / rhs(x)),
-                    Expr::Pow(_, _) => Box::new(move |x| lhs(x).powf(rhs(x))),
-                    Expr::Log(_, _) => Box::new(move |x| rhs(x).log(lhs(x))),
-                    _ => unreachable!(),
-                }
-            }
-
-            expr_pat!(UNOP: inner) => {
-                let inner = inner.get_closure_with_var(var);
-                match self {
-                    Expr::Sin(_) => Box::new(move |x| inner(x).sin()),
-                    Expr::Cos(_) => Box::new(move |x| inner(x).cos()),
-                    _ => unreachable!(),
-                }
-            }
-        }
     }
 
     // pub fn simplify(&mut self) {
@@ -209,13 +216,14 @@ impl Expr {
         }
     }
 
-    // You need to specify the variable for which you want to take the derivative
-    // Before you do that, you need to substitute all other variables with their values
-    pub fn aprox_derivative(&self, var: &str) -> Box<dyn Fn(f32, f32) -> f32 + '_> {
-        let f = self.get_closure_with_var(var);
-        let df = move |x, h: f32| (f(x + h) - f(x)) / h;
+    /// Approximate the derivative of the expression with respect to a given variable
+    /// 
+    /// Only works for expressions with one variable
+    pub fn approx_derivative(&self, var: &str, value: f32, h: f32) -> Result<f32, EvalError> {
+        let f1 = self.eval_with_var(var, value - h)?;
+        let f2 = self.eval_with_var(var, value + h)?;
 
-        Box::new(df)
+        Ok((f2 - f1) / (2.0 * h))
     }
 }
 
@@ -251,6 +259,18 @@ impl Expr {
 
     pub fn new_cos(inner: impl Into<Self>) -> Self {
         Expr::Cos(Box::new(inner.into()))
+    }
+
+    pub fn new_tan(inner: impl Into<Self>) -> Self {
+        Expr::Tan(Box::new(inner.into()))
+    }
+
+    pub fn new_cot(inner: impl Into<Self>) -> Self {
+        Expr::Cot(Box::new(inner.into()))
+    }
+
+    pub fn new_abs(inner: impl Into<Self>) -> Self {
+        Expr::Abs(Box::new(inner.into()))
     }
 }
 
@@ -294,6 +314,9 @@ fn unop_to_string_unchecked(expr: &Expr) -> String {
     match expr {
         Expr::Sin(_) => "sin",
         Expr::Cos(_) => "cos",
+        Expr::Tan(_) => "tan",
+        Expr::Cot(_) => "cot",
+        Expr::Abs(_) => "abs",
         _ => panic!("Not a unary op"),
     }
     .to_string()

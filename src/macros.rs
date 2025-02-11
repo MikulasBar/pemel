@@ -9,7 +9,11 @@ macro_rules! expr_pat {
     };
 
     (UNOP: $inner:ident) => {
-        Expr::Sin($inner) | Expr::Cos($inner)
+        Expr::Sin($inner)
+            | Expr::Cos($inner)
+            | Expr::Tan($inner)
+            | Expr::Cot($inner)
+            | Expr::Abs($inner)
     };
 }
 

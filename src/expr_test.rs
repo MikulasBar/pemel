@@ -61,37 +61,15 @@ fn wrong_const_expr_eval() {
 }
 
 #[test]
-fn get_closure_with_var() {
-    let input = "7.55 - x + 8 * (x - 1) - 2";
-    let expr = Expr::parse(input).unwrap();
-    let closure = expr.get_closure_with_var("x");
-
-    let result = closure(3.0);
-    assert_eq!(result, 18.55);
-}
-
-#[test]
-fn aprox_derivative() {
-    let input = "x*x + 2*x + 1";
-    let expr = Expr::parse(input).unwrap();
-
-    println!("{:?}", expr);
-    let derivative = expr.aprox_derivative("x");
-    let result = derivative(2.0, 0.00001);
-
-    assert_eq!(result.round(), 6.0);
-}
-
-#[test]
 fn power() {
     let input = "2*x^3 - 3*x^2/2 + 1*x^(2/1) - 5";
     let expr = Expr::parse(input).unwrap();
 
     println!("{}", expr.to_string());
 
-    let zero = expr.eval_with_variable("x", 0.0).unwrap();
-    let two = expr.eval_with_variable("x", 2.0).unwrap();
-    let minus_two = expr.eval_with_variable("x", -2.0).unwrap();
+    let zero = expr.eval_with_var("x", 0.0).unwrap();
+    let two = expr.eval_with_var("x", 2.0).unwrap();
+    let minus_two = expr.eval_with_var("x", -2.0).unwrap();
 
     assert_eq!(zero, -5.0);
     assert_eq!(two, 9.0);
@@ -101,30 +79,54 @@ fn power() {
 use std::f32::consts::{E, PI};
 
 #[test]
-fn sin() {
-    let input = "sin(pi/2) + sin(pi)";
+fn goniometric() {
+    let input = "sin(pi/2) + cos(pi) + tan(pi/4) + cot(pi/4)";
     let expr = Expr::parse(input).unwrap();
-    let result = expr.eval_with_variable("pi", PI).unwrap();
+    let result = expr.eval_with_var("pi", PI).unwrap();
 
-    assert!((result - 1.0).abs() <= f32::EPSILON);
-}
-
-#[test]
-fn cos() {
-    let input = "cos(pi) - cos(3*pi)";
-    let expr = Expr::parse(input).unwrap();
-    let result = expr.eval_with_variable("pi", PI).unwrap();
-
-    assert!((result - 0.0).abs() <= f32::EPSILON);
+    assert!((result - 2.0).abs() <= f32::EPSILON);
 }
 
 #[test]
 fn log() {
     let input = "log(2, 8) + ln(e^2) - log(100)";
     let expr = Expr::parse(input).unwrap();
-    let result = expr.eval_with_variable("e", E).unwrap();
+    let result = expr.eval_with_var("e", E).unwrap();
 
     assert_eq!(result, 3.0);
+}
+
+#[test]
+fn eval_with() {
+    let input = "2*x + sin(pi) - ln(e)";
+    let expr = Expr::parse(input).unwrap();
+
+    let result = expr.eval_with(&[
+        ("pi", PI),
+        ("e", E),
+        ("x", 3.0)
+    ]).unwrap();
+
+    assert_eq!(result, 5.0);
+}
+
+#[test]
+fn approx_derivative() {
+    let input = "x^2 + 2*x + 1";
+    let expr = Expr::parse(input).unwrap();
+    let result = expr.approx_derivative("x", 2.0, 0.001).unwrap();
+
+    println!("RESULT: {}", result);
+    assert!((result - 6.0).abs() <= 0.0001);
+}
+
+#[test]
+fn abs() {
+    let input = "abs(1) + abs(-1)";
+    let expr = Expr::parse(input).unwrap();
+    let result = expr.eval_const().unwrap();
+
+    assert_eq!(result, 2.0);
 }
 
 //////////////////////////////////////////////////////////////////////////////
