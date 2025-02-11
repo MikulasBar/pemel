@@ -14,19 +14,33 @@ use crate::parser;
 /// 
 /// If the parsing fails, the method will return an error.
 /// 
-/// Currently the parser is evaluating constant parts of the expression as it's parsing it.
+/// Parser can evaluate constant parts of the expression during parsing.
 /// 
 /// This is done to not evaluate constant parts multiple times in the evaluation step.
 /// 
 /// This means that the parser will return an error if the expression is invalid.
 /// 
-/// This behavior can be unexpected, so it will be toggleable in the future.
+/// This behavior can be unexpected, so it can be disabled by setting the `implicit_evaluation` parameter to `false`.
 /// 
 /// ## Evaluation
 /// 
 /// You can evaluate the expression with 0 or 1 variable using the `eval_const` or `eval_with_variable` method.
 /// 
 /// These operations can return error if the expression is invalid or if the variable is not defined.
+/// 
+/// ## Derivative
+/// 
+/// You can use the `approx_derivative` method to approximate the derivative of the expression with respect to a variable.
+/// 
+/// This method can't be used for expressions with multiple variables.
+/// 
+/// There is also a function like derivative, `D(x, ...)`.
+/// 
+/// First argument is always single variable and the second is the expression.
+/// 
+/// Function like derivative also can't be used for expressions with multiple variables. (yet)
+/// 
+/// If you try to use it, it will panic.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     Num(f32),
@@ -42,6 +56,7 @@ pub enum Expr {
     Tan(Box<Expr>),
     Cot(Box<Expr>),
     Abs(Box<Expr>),
+    Derivative(Box<Expr>, String),
 }
 
 impl Default for Expr {
@@ -58,6 +73,7 @@ impl Expr {
 
     pub fn eval_with_var(&self, var: &str, value: f32) -> Result<f32, EvalError> {
         match self {
+            Expr::Derivative(expr, var) => expr.approx_derivative(var, value, 0.001),
             Expr::Num(n) => Ok(*n),
             Expr::Var(s) => {
                 if s == var {
@@ -85,6 +101,8 @@ impl Expr {
     /// This function is not meant to be used for lot of variables
     /// 
     /// It is O(n) where n is the number of variables
+    /// 
+    /// Panics for derivative - not implemented yet
     pub fn eval_with(&self, values: &[(&str, f32)]) -> Result<f32, EvalError> {
         match self {
             Expr::Num(n) => Ok(*n),
@@ -96,6 +114,10 @@ impl Expr {
                 }
 
                 Err(EvalError::VariableNotDefined(s.clone()))
+            }
+
+            Expr::Derivative(..) => {
+                todo!("Derivative with multiple variables is not implemented yet")
             }
 
             expr_pat!(BINOP: lhs, rhs) => {
@@ -113,6 +135,7 @@ impl Expr {
 
     pub fn eval_const(&self) -> Result<f32, EvalError> {
         match self {
+            Expr::Derivative(expr, _) => expr.eval_const(),
             Expr::Num(n) => Ok(*n),
             Expr::Var(s) => return Err(EvalError::VariableNotDefined(s.clone())),
 
@@ -203,6 +226,8 @@ impl Expr {
                 *self = value.into();
             }
 
+            Expr::Derivative(expr, _) => expr.substitute(var, value),
+
             expr_pat!(BINOP: lhs, rhs) => {
                 let value = value.into();
                 lhs.substitute(var, value.clone());
@@ -272,6 +297,10 @@ impl Expr {
     pub fn new_abs(inner: impl Into<Self>) -> Self {
         Expr::Abs(Box::new(inner.into()))
     }
+
+    pub fn new_derivative(var: impl Into<String>, expr: impl Into<Self>) -> Self {
+        Expr::Derivative(Box::new(expr.into()), var.into())
+    }
 }
 
 impl Display for Expr {
@@ -280,6 +309,7 @@ impl Display for Expr {
             Expr::Num(n) => write!(f, "{}", n),
             Expr::Var(s) => write!(f, "{}", s),
             Expr::Log(base, arg) => write!(f, "log({}, {})", base.to_string(), arg.to_string()),
+            Expr::Derivative(expr, var) => write!(f, "D({}, {})", var, expr.to_string()),
 
             expr_pat!(BINOP: lhs, rhs) => write!(
                 f,

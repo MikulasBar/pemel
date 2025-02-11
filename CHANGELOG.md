@@ -20,9 +20,12 @@ All notable changes to this project will be documented in this file.
 - Evaluation with multiple variables.
 - Absolute value function.
 - Support for prefix unary operators ( +a, -a).
+- toggleable implicit evaluation during parsing.
+- function like derivative D(x, ...).
 
 ### Changed
 - Changed approx_derivative() function to return a value instead of a function.
 
 ### Removed
 - get_closure() function.
+- disabled WrongNumberOfArguments exception.

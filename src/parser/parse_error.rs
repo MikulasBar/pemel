@@ -8,6 +8,8 @@ pub enum ParseError {
     UnexpectedChar(char),
     WrongNumberOfArgs(usize),
     FunctionNotRecognized(String),
+    /// Indicates that a derivative was taken with repsect to a non-variable
+    DerivativeNotVariable(String),
 
     /// This error can occur when the parser is evaluating during parsing.
     EvalError(EvalError),

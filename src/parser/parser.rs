@@ -190,7 +190,16 @@ fn wrap_with_func(ident: String, mut args: Vec<Expr>) -> Result<Expr, ParseError
             Expr::new_log(arg0, arg1)
         }
 
-        ("cos" | "sin" | "ln" | "log" | "tan" | "cot", _) => return Err(ParseError::WrongNumberOfArgs(len)),
+        ("D", 2) => {
+            let arg1 = mem::take(&mut args[1]);
+            if let Expr::Var(var) = arg0 {
+                Expr::new_derivative(var, arg1)
+            } else {
+                return Err(ParseError::DerivativeNotVariable(arg0.to_string()));
+            }
+        }
+
+        // ("cos" | "sin" | "ln" | "log" | "tan" | "cot", _) => return Err(ParseError::WrongNumberOfArgs(len)),
         _ => return Err(ParseError::FunctionNotRecognized(ident)),
     })
 }
