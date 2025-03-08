@@ -5,42 +5,46 @@ use crate::macros::expr_pat;
 use crate::parser;
 
 /// Represensts a mathematical expression
-/// 
+///
 /// Expressions are represented as a tree of operations.
-/// 
+///
 /// ## Parsing
-/// 
+///
 /// To get this tree from a string, use the `parse` method.
-/// 
+///
 /// If the parsing fails, the method will return an error.
-/// 
+///
 /// Parser can evaluate constant parts of the expression during parsing.
-/// 
+///
 /// This is done to not evaluate constant parts multiple times in the evaluation step.
-/// 
+///
 /// This means that the parser will return an error if the expression is invalid.
-/// 
+///
 /// This behavior can be unexpected, so it can be disabled by setting the `implicit_evaluation` parameter to `false`.
-/// 
+///
 /// ## Evaluation
-/// 
+///
 /// You can evaluate the expression with 0 or 1 variable using the `eval_const` or `eval_with_variable` method.
-/// 
+///
 /// These operations can return error if the expression is invalid or if the variable is not defined.
-/// 
+///
 /// ## Derivative
 /// 
+/// **Note that derivatives are still very experimental and can be buggy.**
+///
 /// You can use the `approx_derivative` method to approximate the derivative of the expression with respect to a variable.
-/// 
+///
 /// This method can't be used for expressions with multiple variables.
-/// 
+///
 /// There is also a function like derivative, `D(x, ...)`.
-/// 
+///
 /// First argument is always single variable and the second is the expression.
 /// 
-/// Function like derivative also can't be used for expressions with multiple variables. (yet)
+/// Substitution into Derivative is possible.
 /// 
-/// If you try to use it, it will panic.
+/// If you try to substitute into the variable that is being derivated, it will use 'delayed' substitution.
+/// 
+/// 'delayed' substitution is evaluated only when the derivative is evaluated.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     Num(f32),
@@ -56,7 +60,8 @@ pub enum Expr {
     Tan(Box<Expr>),
     Cot(Box<Expr>),
     Abs(Box<Expr>),
-    Derivative(Box<Expr>, String),
+    // The last argument is possible substitute for the variable
+    Derivative(Box<Expr>, String, Option<Box<Expr>>),
 }
 
 impl Default for Expr {
@@ -66,14 +71,36 @@ impl Default for Expr {
 }
 
 impl Expr {
+    const DX: f32 = 0.001;
+
     pub fn parse(input: &str, implicit_evaluation: bool) -> Result<Expr, parser::ParseError> {
         let tokens = parser::tokenize(input)?;
         parser::parse(tokens, implicit_evaluation)
     }
 
+    /// Evaluate the expression with the given value for the variable
+    /// 
+    /// If this expression contains derivative, you have to provide value for the derivative variable even if the derivative is constant
     pub fn eval_with_var(&self, var: &str, value: f32) -> Result<f32, EvalError> {
         match self {
-            Expr::Derivative(expr, var) => expr.approx_derivative(var, value, 0.001),
+            Expr::Derivative(expr, d_var, sub) => {
+                let mut inner = expr.clone();
+
+                if d_var != var {
+                    inner.substitute(var, value);
+                }
+
+                if let Some(sub) = sub {
+                    let sub_value = sub.eval_with_var(var, value)?;
+                    return inner.approx_derivative(d_var, sub_value, Self::DX);
+                }
+
+                if d_var == var {
+                    inner.approx_derivative(d_var, value, Self::DX)
+                } else {
+                    Err(EvalError::VariableNotDefined(d_var.clone()))
+                }
+            }
             Expr::Num(n) => Ok(*n),
             Expr::Var(s) => {
                 if s == var {
@@ -97,12 +124,12 @@ impl Expr {
     }
 
     /// Evaluate the expression with the given values for the variables
-    /// 
+    ///
     /// This function is not meant to be used for lot of variables
-    /// 
+    ///
     /// It is O(n) where n is the number of variables
-    /// 
-    /// Panics for derivative - not implemented yet
+    ///
+    /// You need to provide a value for variable that you use for derivative, even if the derivative is constant
     pub fn eval_with(&self, values: &[(&str, f32)]) -> Result<f32, EvalError> {
         match self {
             Expr::Num(n) => Ok(*n),
@@ -116,8 +143,25 @@ impl Expr {
                 Err(EvalError::VariableNotDefined(s.clone()))
             }
 
-            Expr::Derivative(..) => {
-                todo!("Derivative with multiple variables is not implemented yet")
+            Expr::Derivative(expr, d_var, sub) => {
+                let mut inner = expr.clone();
+                let mut d_val = None;
+                for &(var, value) in values {
+                    if var == d_var {
+                        d_val = Some(value);
+                        continue;
+                    }
+                    inner.substitute(var, value);
+                }
+
+                if let Some(sub) = sub {
+                    let sub_value = sub.eval_with(values)?;
+                    inner.approx_derivative(d_var, sub_value, Self::DX)
+                } else if let Some(d_val) = d_val {
+                    inner.approx_derivative(d_var, d_val, Self::DX)
+                } else {
+                    Err(EvalError::VariableNotDefined(d_var.clone()))
+                }
             }
 
             expr_pat!(BINOP: lhs, rhs) => {
@@ -133,9 +177,24 @@ impl Expr {
         }
     }
 
+    /// Evaluate the expression as a constant
+    ///
+    /// If the expression contains derivative, it check if substitution was used
+    ///
+    /// If it was, it will evaluate the expression with the substitution
+    ///
+    /// If it wasn't, it will return 0 (only if inner expression is constant), because the derivative is 0
     pub fn eval_const(&self) -> Result<f32, EvalError> {
         match self {
-            Expr::Derivative(expr, _) => expr.eval_const(),
+            Expr::Derivative(expr, var, sub) => {
+                if let Some(sub) = sub {
+                    let sub = sub.eval_const()?;
+                    return expr.approx_derivative(var, sub, Self::DX);
+                }
+
+                let _ = expr.eval_const();
+                return Ok(0.0);
+            }
             Expr::Num(n) => Ok(*n),
             Expr::Var(s) => return Err(EvalError::VariableNotDefined(s.clone())),
 
@@ -199,34 +258,43 @@ impl Expr {
                 let tan = inner.tan();
                 if tan == 0.0 {
                     return Err(EvalError::DivisionByZero);
-                } else  {
+                } else {
                     1.0 / tan
                 }
-            },
+            }
 
             // Panic is safe because we know it's binop
             _ => panic!("Not a unary function: {:?}", self),
         })
     }
 
-    // pub fn simplify(&mut self) {
-    //     *self = match self {
-    //         Expr::Num(_) => self.clone(),
-    //         Expr::Var(_) => self.clone(),
-    //         Expr::Sub(a, b) if a == b => Expr::Num(0.0),
-    //         Expr::Div(a, b) if a == b => Expr::Num(1.0),
-    //         // Expr::Sin(e) => Expr::Sin(Box::new(e.simplify())),
-    //         _ => return,
-    //     }
-    // }
-
+    /// Substitute a variable with a value
+    ///
+    /// If you use this on derivative with respect to the variable you are substituting, it will only substitute the variable in the derivated expression
+    ///
+    /// So if you substitute `x` in `D(x, x^2)` with `5`, you will get `D(x, 5^2)`
     pub fn substitute(&mut self, var: &str, value: impl Into<Expr>) {
         match self {
             Expr::Var(s) if s == var => {
                 *self = value.into();
             }
 
-            Expr::Derivative(expr, _) => expr.substitute(var, value),
+            Expr::Derivative(expr, d_var, sub) => {
+                if d_var != var {
+                    let value: Expr = value.into();
+                    expr.substitute(var, value.clone());
+
+                    if let Some(sub) = sub {
+                        sub.substitute(var, value);
+                    }
+                } else {
+                    if let Some(sub) = sub {
+                        sub.substitute(var, value);
+                    } else {
+                        *sub = Some(Box::new(value.into()));
+                    }
+                }
+            }
 
             expr_pat!(BINOP: lhs, rhs) => {
                 let value = value.into();
@@ -241,14 +309,20 @@ impl Expr {
         }
     }
 
-    /// Approximate the derivative of the expression with respect to a given variable
-    /// 
-    /// Only works for expressions with one variable
-    pub fn approx_derivative(&self, var: &str, value: f32, h: f32) -> Result<f32, EvalError> {
-        let f1 = self.eval_with_var(var, value - h)?;
-        let f2 = self.eval_with_var(var, value + h)?;
+    pub fn substitute_nums(&mut self, values: &[(&str, f32)]) {
+        for (var, value) in values {
+            self.substitute(var, *value);
+        }
+    }
 
-        Ok((f2 - f1) / (2.0 * h))
+    /// Approximate the derivative of the expression with respect to a given variable
+    ///
+    /// Only works for expressions with one variable
+    pub fn approx_derivative(&self, var: &str, value: f32, dx: f32) -> Result<f32, EvalError> {
+        let f1 = self.eval_with_var(var, value - dx)?;
+        let f2 = self.eval_with_var(var, value + dx)?;
+
+        Ok((f2 - f1) / (2.0 * dx))
     }
 }
 
@@ -299,7 +373,7 @@ impl Expr {
     }
 
     pub fn new_derivative(var: impl Into<String>, expr: impl Into<Self>) -> Self {
-        Expr::Derivative(Box::new(expr.into()), var.into())
+        Expr::Derivative(Box::new(expr.into()), var.into(), None)
     }
 }
 
@@ -309,7 +383,15 @@ impl Display for Expr {
             Expr::Num(n) => write!(f, "{}", n),
             Expr::Var(s) => write!(f, "{}", s),
             Expr::Log(base, arg) => write!(f, "log({}, {})", base.to_string(), arg.to_string()),
-            Expr::Derivative(expr, var) => write!(f, "D({}, {})", var, expr.to_string()),
+            Expr::Derivative(expr, var, None) => write!(f, "D({}, {})", var, expr.to_string()),
+            Expr::Derivative(expr, var, Some(sub)) => write!(
+                f,
+                "D({}, {})[{} = {}]",
+                var,
+                expr.to_string(),
+                var,
+                sub.to_string()
+            ),
 
             expr_pat!(BINOP: lhs, rhs) => write!(
                 f,

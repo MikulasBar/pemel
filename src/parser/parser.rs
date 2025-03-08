@@ -126,7 +126,6 @@ fn parse_ident(tokens: &mut TokenIter, implicit_evaluation: bool) -> ParseResult
 fn parse_parens(tokens: &mut TokenIter, implicit_evaluation: bool) -> ParseResult {
     expect_token!(Token::LParen in ITER tokens);
     let result = parse_expr(tokens, implicit_evaluation);
-    println!("{:?}", tokens.peek());
     expect_token_ret!(Token::RParen in ITER tokens);
     result
 }
@@ -164,7 +163,6 @@ fn to_func(ident: String, args: Vec<Expr>, is_const: IsConst) -> Result<Expr, Pa
     }
 }
 
-// TODO: Refactor this function
 fn wrap_with_func(ident: String, mut args: Vec<Expr>) -> Result<Expr, ParseError> {
     use std::mem;
 

@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## 0.1.0 - 2024-01-22
+## 0.1.0 - 2025-01-22
 
 ### Added
 - Initial release of PEMEL (Parsing and Evaluating of Mathematical Expressions Library).
@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file.
 - Unit tests for core functionality.
 
 
-## 0.2.0 - 2024-02-05
+## 0.2.0 - 2025-02-05
 
 ### Added
 - Support for tangent and cotangent functions.
@@ -29,3 +29,9 @@ All notable changes to this project will be documented in this file.
 ### Removed
 - get_closure() function.
 - disabled WrongNumberOfArguments exception.
+
+## 0.2.1 - 2025-03-08
+
+### Added
+- Evaluation of derivative including multiple variables.
+- 'Delayed' substitution for derivatives. (delayed sub is evaluated after the derivative is calculated)

@@ -33,6 +33,8 @@ fn eval_error_in_parse() {
     assert_eq!(expr, Err(ParseError::EvalError(EvalError::DivisionByZero)));
 }
 
+// This test is not supported for now
+
 // #[test]
 // fn wrong_number_of_args() {
 //     let input = "cos(2, 4)";
@@ -136,6 +138,19 @@ fn derivative_function() {
     let result = expr.eval_with_var("x", 2.0).unwrap();
 
     assert!((result - 6.0).abs() <= 0.0001);
+}
+
+#[test]
+fn derivative_multiple_vars() {
+    let input = "D(x, x^2 + y^2)";
+    let expr = Expr::parse(input, false).unwrap();
+
+    let result = expr.eval_with(&[
+        ("x", 2.0),
+        ("y", 3.0)
+    ]).unwrap();
+
+    assert!((result - 4.0).abs() <= 0.0002);
 }
 
 //////////////////////////////////////////////////////////////////////////////

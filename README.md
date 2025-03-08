@@ -16,6 +16,7 @@
 - Evaluation with multiple variables
 - Numeric derivatives
 - Implicit evaluation during parsing
+- Substitution
 
 ## Usage
 
@@ -36,10 +37,6 @@ fn main() {
 ## Contributing
 
 Untill I create a `CONTRIBUTING.md` file, I will not accept any pull requests.
-
-<!--
-Contributions or feedback are welcome! For more information, please refer to the [CONTRIBUTING](CONTRIBUTING.md) file. 
--->
 
 ## License
 
